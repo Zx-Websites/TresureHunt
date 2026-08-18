@@ -75,7 +75,7 @@ export default function HomePage() {
               <span>LIVE CAMPUS EVENT 2026</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-wider text-slate-100 uppercase">
-              CYBER HUNT PLATFORM
+              TREASURE HUNT PLATFORM
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 max-w-sm mx-auto">
               Physical Campus Navigation & Cryptographic Mainframe Decryption Interface
@@ -222,14 +222,16 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Node Details Modal */}
+      {/* Node Details Modal (Riddle -> Enter Code -> Confirm Got Puzzle -> Next) */}
       {selectedNode && (
         <NodeDetailsModal
           node={selectedNode}
+          progress={progress}
           onClose={() => setSelectedNode(null)}
           isSubmittingCode={isSubmittingCode}
           onSubmitCode={submitCode}
           onSubmitMinigame={submitMinigameScore}
+          onCollectPiece={collectPhysicalPiece}
         />
       )}
 

@@ -4,7 +4,7 @@ export const ICAT_2026_HUNT_ID = "icat-2026";
 
 export const ICAT_2026_HUNT_DATA: Hunt = {
   id: ICAT_2026_HUNT_ID,
-  name: "ICAT Bangalore Cyber Hunt 2026",
+  name: "ICAT Bangalore Treasure Hunt 2026",
   slug: "icat-2026",
   status: "active",
   theme: "cyberpunk-vault",
