@@ -20,6 +20,7 @@ import {
   Route,
   KeyRound,
   CheckCircle2,
+  Activity,
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -90,10 +91,19 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <span className="text-xs text-amber-400 font-bold px-2 py-1 rounded bg-amber-950/40 border border-amber-500/30">
-          EVENT: {hunt.name}
-        </span>
-      </div>
+          <Link
+            href="/track"
+            target="_blank"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-cyan-500/50 bg-cyan-950/40 text-cyan-300 hover:bg-cyan-900/60 text-xs font-bold transition-all shadow-[0_0_15px_rgba(0,240,255,0.2)]"
+          >
+            <Activity className="w-4 h-4 text-cyan-400 animate-pulse" />
+            <span>OPEN /TRACK DISPLAY WALL</span>
+          </Link>
+
+          <span className="text-xs text-amber-400 font-bold px-2 py-1 rounded bg-amber-950/40 border border-amber-500/30">
+            EVENT: {hunt.name}
+          </span>
+        </div>
 
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Real-time Telemetry Leaderboard */}
