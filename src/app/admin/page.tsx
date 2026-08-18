@@ -10,6 +10,7 @@ import { PathBuilder } from "@/components/admin/PathBuilder";
 import { CyberCard } from "@/components/ui/CyberCard";
 import { CyberButton } from "@/components/ui/CyberButton";
 import { soundFx } from "@/lib/game-engine/sound-effects";
+import { ICAT_2026_SECRETS } from "@/lib/game-engine/icat-2026-seed-data";
 import {
   ShieldAlert,
   ArrowLeft,
@@ -198,15 +199,8 @@ export default function AdminPage() {
                       </span>
                     </td>
                     <td className="py-2.5 px-2 font-bold text-amber-300">
-                      {n.id === "202" && "ALPHA202"}
-                      {n.id === "101" && "CIPHER101"}
-                      {n.id === "102" && "VECTOR102"}
-                      {n.id === "301" && "NEXUS301"}
-                      {n.id === "305" && "MATRIX305"}
-                      {n.id === "401A" && "OVERRIDE401A (Score >= 850)"}
-                      {n.id === "503" && "SYNAPSE503"}
-                      {n.id === "505" && "QUANTUM505"}
-                      {n.id === "FINAL_VAULT" && "TREASURE2026"}
+                      {ICAT_2026_SECRETS.codes[n.id]?.code || "CYBER2026"}
+                      {n.id === "401A" && " (Score >= 850)"}
                     </td>
                     <td className="py-2.5 px-2 text-emerald-400">
                       {n.puzzleLocation?.pieceId || "N/A"}
