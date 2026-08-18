@@ -8,6 +8,7 @@ import { LiveLeaderboard } from "@/components/admin/LiveLeaderboard";
 import { QuickSeeder } from "@/components/admin/QuickSeeder";
 import { PathBuilder } from "@/components/admin/PathBuilder";
 import { RiddleAndCodeEditor } from "@/components/admin/RiddleAndCodeEditor";
+import { AdminPasswordGate } from "@/components/admin/AdminPasswordGate";
 import { CyberCard } from "@/components/ui/CyberCard";
 import { CyberButton } from "@/components/ui/CyberButton";
 import { soundFx } from "@/lib/game-engine/sound-effects";
@@ -69,7 +70,8 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#04070F] text-slate-100 p-4 sm:p-8 space-y-8 font-mono">
+    <AdminPasswordGate>
+      <div className="min-h-screen bg-[#04070F] text-slate-100 p-4 sm:p-8 space-y-8 font-mono">
       {/* Top Bar */}
       <div className="max-w-7xl mx-auto flex items-center justify-between border-b border-slate-800 pb-4">
         <div className="flex items-center gap-3">
@@ -217,5 +219,6 @@ export default function AdminPage() {
         </CyberCard>
       </div>
     </div>
+  </AdminPasswordGate>
   );
 }

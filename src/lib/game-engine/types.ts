@@ -1,5 +1,7 @@
 export type HuntStatus = "draft" | "active" | "paused" | "completed";
 
+export type TeamStatus = "active" | "completed" | "lost" | "disqualified" | "paused";
+
 export type UserRole = "student" | "teacher" | "admin";
 
 export type NodeType = "NORMAL" | "BOSS" | "FINAL";
@@ -116,7 +118,9 @@ export interface TeamProgress {
   completedNodes: string[];
   collectedPieces: string[];
   bossProgress: Record<string, BossProgressEntry>;
-  status: HuntStatus;
+  status: TeamStatus;
+  loserReason?: string;
+  disqualifiedAt?: number;
   startedAt: number;
   completedAt?: number;
   updatedAt: number;

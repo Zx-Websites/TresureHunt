@@ -10,6 +10,7 @@ import { CyberMap } from "@/components/game/CyberMap";
 import { NodeDetailsModal } from "@/components/game/NodeDetailsModal";
 import { PuzzleLocationPanel } from "@/components/game/PuzzleLocationPanel";
 import { FinalTreasureModal } from "@/components/game/FinalTreasureModal";
+import { LostDashboard } from "@/components/game/LostDashboard";
 import { CyberCard } from "@/components/ui/CyberCard";
 import { CyberButton } from "@/components/ui/CyberButton";
 import { ClientHuntNode } from "@/lib/game-engine/types";
@@ -101,6 +102,11 @@ export default function HomePage() {
         <TeamSelector />
       </main>
     );
+  }
+
+  // 4. Lost / Disqualified Elimination Lockout Screen
+  if (progress && (progress.status === "lost" || progress.status === "disqualified")) {
+    return <LostDashboard progress={progress} hunt={hunt} />;
   }
 
   // 4. Main Game Screen for Students
