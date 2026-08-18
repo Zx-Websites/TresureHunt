@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       currentNodeId: newCurrentNodeId,
       bossProgress: updatedBossProgress,
       status: isHuntCompleted ? "completed" : progress.status,
-      completedAt: isHuntCompleted ? Date.now() : undefined,
+      ...(isHuntCompleted ? { completedAt: Date.now() } : {}),
       updatedAt: Date.now(),
     };
 
