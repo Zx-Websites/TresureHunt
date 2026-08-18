@@ -24,33 +24,36 @@ export function PuzzleLocationPanel({
 
   const completedNodes = new Set(progress?.completedNodes || []);
   const collectedPieces = new Set(progress?.collectedPieces || []);
+  const teamRoute = progress?.routeId ? hunt.routes[progress.routeId] : null;
+  const routeNodes = teamRoute?.nodes || [];
 
-  // Collect all unique pieces from hunt nodes
-  const pieceMap: Record<string, { pieceId: string; nodeId: string; roomName: string; clue: string; hint?: string; isUnlocked: boolean; isCollected: boolean }> = {};
+  // Exactly 6 physical fragments from Stages 2 to 7
+  const piecesList = [1, 2, 3, 4, 5, 6].map((pieceNum) => {
+    const stageIndex = pieceNum; // Stage 2 is index 1, Stage 7 is index 6
+    const nodeId = routeNodes[stageIndex];
+    const node = nodeId ? hunt.nodes[nodeId] : null;
+    const pieceId = `PIECE_${pieceNum}`;
+    const isUnlocked = nodeId ? completedNodes.has(nodeId) : false;
+    const isCollected = collectedPieces.has(pieceId);
+    const puzzleInfo = node?.routePuzzleLocations?.[progress?.routeId || "P1"] || node?.puzzleLocation;
 
-  Object.values(hunt.nodes).forEach((node) => {
-    if (node.puzzleLocation?.pieceId) {
-      const pieceId = node.puzzleLocation.pieceId;
-      const isUnlocked = completedNodes.has(node.id);
-      const isCollected = collectedPieces.has(pieceId);
-
-      if (!pieceMap[pieceId] || isUnlocked) {
-        pieceMap[pieceId] = {
-          pieceId,
-          nodeId: node.id,
-          roomName: node.name,
-          clue: node.puzzleLocation.clue,
-          hint: node.puzzleLocation.hint,
-          isUnlocked,
-          isCollected,
-        };
-      }
-    }
+    return {
+      pieceNumber: pieceNum,
+      pieceId,
+      nodeId: nodeId || "???",
+      stageNumber: pieceNum + 1,
+      roomName: isUnlocked ? (node?.name || nodeId) : `Stage #${pieceNum + 1} (Classified)`,
+      clue: isUnlocked
+        ? (puzzleInfo?.clue || `Physical Fragment #${pieceNum} is cached in this room. Search the area!`)
+        : `Locked. Decrypt Stage #${pieceNum + 1} to reveal this fragment's physical coordinates.`,
+      hint: isUnlocked ? puzzleInfo?.hint : undefined,
+      isUnlocked,
+      isCollected,
+    };
   });
 
-  const piecesList = Object.values(pieceMap);
-
   const handleMarkCollected = async (pieceId: string) => {
+    soundFx.playClick();
     setLoadingPieceId(pieceId);
     try {
       await onCollectPiece(pieceId);
@@ -61,17 +64,17 @@ export function PuzzleLocationPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <CyberCard className="w-full max-w-xl p-6 space-y-5 border-cyan-500/80 shadow-[0_0_35px_rgba(0,240,255,0.25)] max-h-[90vh] overflow-y-auto">
+      <CyberCard className="w-full max-w-xl p-6 space-y-5 border-cyan-500/80 shadow-[0_0_35px_rgba(0,240,255,0.25)] max-h-[90vh] overflow-y-auto font-mono">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2 text-cyan-400">
             <Puzzle className="w-6 h-6" />
             <div>
-              <h2 className="font-mono font-black text-lg text-slate-100 uppercase tracking-wider">
-                PHYSICAL CACHE REGISTRY
+              <h2 className="font-black text-lg text-slate-100 uppercase tracking-wider">
+                PHYSICAL CACHE REGISTRY (6 TOTAL FRAGMENTS)
               </h2>
-              <p className="text-xs font-mono text-slate-400">
-                Squad Physical Artifacts: {collectedPieces.size} / {piecesList.length} Retrieved
+              <p className="text-xs text-slate-400">
+                Retrieved: {collectedPieces.size} / 6 Fragments (Stages 2–7). After Stage 7, focus turns to pure riddles & Boss challenge!
               </p>
             </div>
           </div>
@@ -84,7 +87,7 @@ export function PuzzleLocationPanel({
         </div>
 
         {/* Piece Items */}
-        <div className="space-y-3 font-mono">
+        <div className="space-y-3">
           {piecesList.map((item) => {
             return (
               <div
@@ -99,71 +102,76 @@ export function PuzzleLocationPanel({
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    {item.isCollected ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    ) : item.isUnlocked ? (
-                      <MapPin className="w-5 h-5 text-cyan-400 animate-bounce" />
-                    ) : (
-                      <Lock className="w-5 h-5 text-slate-600" />
-                    )}
-                    <span className="font-black text-sm tracking-wider">
-                      {item.pieceId.replace("_", " ")}
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded border ${
+                        item.isCollected
+                          ? "border-emerald-500/60 bg-emerald-900/60 text-emerald-300"
+                          : item.isUnlocked
+                          ? "border-cyan-500/60 bg-cyan-900/60 text-cyan-300"
+                          : "border-slate-800 bg-slate-900 text-slate-600"
+                      }`}
+                    >
+                      FRAGMENT #{item.pieceNumber} (STAGE #{item.stageNumber})
+                    </span>
+                    <span className="text-xs font-bold text-slate-200">
+                      {item.roomName}
                     </span>
                   </div>
 
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      item.isCollected
-                        ? "bg-emerald-950 text-emerald-300 border border-emerald-500/50"
-                        : item.isUnlocked
-                        ? "bg-cyan-950 text-cyan-300 border border-cyan-500/50"
-                        : "bg-slate-900 text-slate-600 border border-slate-800"
-                    }`}
-                  >
-                    {item.isCollected ? "SECURED IN PHYSICAL SQUAD CACHE" : item.isUnlocked ? "CLUE REVEALED" : "SECTOR LOCKED"}
-                  </span>
+                  {item.isCollected ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-bold">
+                      <CheckCircle2 className="w-4 h-4" />
+                      IN SQUAD BAG
+                    </span>
+                  ) : item.isUnlocked ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-cyan-300 font-bold animate-pulse">
+                      <MapPin className="w-4 h-4" />
+                      AVAILABLE TO RETRIEVE
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-slate-600">
+                      <Lock className="w-3.5 h-3.5" />
+                      LOCKED
+                    </span>
+                  )}
                 </div>
 
-                {item.isUnlocked ? (
-                  <div className="space-y-2 text-xs">
-                    <p className="text-slate-200 italic font-sans">{item.clue}</p>
-                    {item.hint && (
-                      <p className="text-[11px] text-cyan-400 font-mono">
-                        Tactical Hint: {item.hint}
-                      </p>
-                    )}
-                    <div className="pt-2 flex justify-end">
-                      {!item.isCollected ? (
-                        <CyberButton
-                          onClick={() => handleMarkCollected(item.pieceId)}
-                          loading={loadingPieceId === item.pieceId}
-                          variant="green"
-                          size="sm"
-                        >
-                          MARK PHYSICALLY RETRIEVED
-                        </CyberButton>
-                      ) : (
-                        <span className="text-emerald-400 text-xs font-bold flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          PHYSICALLY COLLECTED
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-600 italic">
-                    Clear Sector {item.nodeId} to decrypt this physical piece location.
+                <p className="text-xs text-slate-300 mb-2 leading-relaxed">
+                  {item.clue}
+                </p>
+
+                {item.hint && (
+                  <p className="text-[11px] text-amber-300/80 italic mb-3">
+                    💡 Hint: {item.hint}
                   </p>
+                )}
+
+                {item.isUnlocked && !item.isCollected && (
+                  <div className="pt-2 border-t border-slate-800 flex justify-end">
+                    <CyberButton
+                      onClick={() => handleMarkCollected(item.pieceId)}
+                      loading={loadingPieceId === item.pieceId}
+                      variant="green"
+                      size="sm"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                      CONFIRM PHYSICAL PIECE RETRIEVED
+                    </CyberButton>
+                  </div>
                 )}
               </div>
             );
           })}
         </div>
 
-        <div className="flex justify-end pt-2 border-t border-slate-800">
-          <CyberButton onClick={onClose} variant="ghost" size="md">
-            CLOSE REGISTRY
-          </CyberButton>
+        {/* Info Box */}
+        <div className="p-3.5 rounded-lg border border-slate-800 bg-[#050811] text-xs text-slate-400 space-y-1">
+          <p className="font-bold text-slate-300">
+            ℹ️ Grand Treasure Assemble Rule:
+          </p>
+          <p>
+            Stages 8, 9 (Boss), 10, 11, and 12 do not contain physical pieces. Bring all 6 fragments collected in Stages 2–7 to the Final Vault in the Auditorium to assemble the master relic!
+          </p>
         </div>
       </CyberCard>
     </div>

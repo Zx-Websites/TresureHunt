@@ -92,14 +92,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Verify code against server secret
-    const secretEntry = secrets.codes[nodeId];
+    // 6. Verify code against server secret (supports route-specific code first, then global room code)
+    const routeSecretKey = `${progress.routeId}_${nodeId}`;
+    const secretEntry = secrets.codes[routeSecretKey] || secrets.codes[nodeId];
     const correctCode = secretEntry?.code?.trim().toUpperCase();
     const providedCode = enteredCode.toString().trim().toUpperCase();
 
     if (!correctCode || providedCode !== correctCode) {
       return NextResponse.json(
-        { success: false, error: "ACCESS DENIED: Invalid clearance cipher." },
+        { success: false, error: "ACCESS DENIED: Invalid clearance cipher for your squad route." },
         { status: 403 }
       );
     }

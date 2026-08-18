@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { huntId = "icat-2026", action, route, node, secretCode } = body;
+    const { huntId = "icat-2026", action, route, node, secretCode, routeSecretKey } = body;
 
     // Fetch existing hunt
     let hunt: Hunt = ICAT_2026_HUNT_DATA;
@@ -75,14 +75,24 @@ export async function POST(req: NextRequest) {
 
       await adminDb.collection("hunts").doc(huntId).set(hunt, { merge: true });
 
-      // If secret code provided, update secrets collection
+      // If secret code provided, update secrets collection (with route-specific key support)
       if (secretCode) {
+        const key = routeSecretKey || targetNode.id;
         secrets.codes = {
           ...secrets.codes,
-          [targetNode.id]: {
+          [key]: {
             code: secretCode.trim().toUpperCase(),
             minigameScoreThreshold: targetNode.minigame?.minimumScore,
           },
+          // Also set fallback default key if not present
+          ...(!secrets.codes[targetNode.id]
+            ? {
+                [targetNode.id]: {
+                  code: secretCode.trim().toUpperCase(),
+                  minigameScoreThreshold: targetNode.minigame?.minimumScore,
+                },
+              }
+            : {}),
         };
         secrets.updatedAt = Date.now();
         await adminDb.collection("hunt_secrets").doc(huntId).set(secrets, { merge: true });

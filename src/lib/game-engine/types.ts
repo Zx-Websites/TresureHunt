@@ -35,6 +35,7 @@ export interface HuntNode {
     text: string;
     hint?: string;
   };
+  routeRiddles?: Record<string, { title?: string; text: string; hint?: string }>;
   codeSource: CodeSource;
   nextNodes: string[];
   puzzleLocation?: {
@@ -42,6 +43,7 @@ export interface HuntNode {
     hint?: string;
     pieceId?: string;
   };
+  routePuzzleLocations?: Record<string, { clue: string; hint?: string; pieceId?: string }>;
   minigame?: {
     gameId: string;
     minimumScore: number;

@@ -62,10 +62,16 @@ export function sanitizeNodesForClient(
   const unlockedSet = new Set(progress?.unlockedNodes || [huntStartingNodeId]);
   const bossProgress = progress?.bossProgress || {};
 
+  const teamRouteId = progress?.routeId || "P1";
+
   return Object.values(nodes).map((node) => {
     const isCompleted = completedSet.has(node.id);
     const isUnlocked = unlockedSet.has(node.id) && !isCompleted;
     const isBossPassed = !!bossProgress[node.id]?.passed;
+
+    // Resolve route-specific riddle and puzzle location if available
+    const effectiveRiddle = node.routeRiddles?.[teamRouteId] || node.riddle;
+    const effectivePuzzleLocation = node.routePuzzleLocations?.[teamRouteId] || node.puzzleLocation;
 
     if (isCompleted) {
       return {
@@ -75,10 +81,10 @@ export function sanitizeNodesForClient(
         type: node.type,
         position: node.position,
         state: "COMPLETED",
-        riddle: node.riddle,
+        riddle: effectiveRiddle,
         codeSource: node.codeSource,
         nextNodes: node.nextNodes,
-        puzzleLocation: node.puzzleLocation,
+        puzzleLocation: effectivePuzzleLocation,
         minigame: node.minigame,
         isBossPassed: true,
       };
@@ -92,9 +98,10 @@ export function sanitizeNodesForClient(
         type: node.type,
         position: node.position,
         state: "AVAILABLE",
-        riddle: node.riddle,
+        riddle: effectiveRiddle,
         codeSource: node.codeSource,
         nextNodes: node.nextNodes,
+        puzzleLocation: effectivePuzzleLocation,
         minigame: node.minigame,
         isBossPassed,
       };

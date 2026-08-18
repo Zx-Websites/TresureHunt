@@ -86,7 +86,7 @@ export function CyberHeader({
             className="flex items-center gap-2 px-2.5 py-1.5 rounded border border-cyan-500/30 bg-cyan-950/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-950/60 transition-all cursor-pointer shadow-[0_0_10px_rgba(0,240,255,0.15)]"
           >
             <Puzzle className="w-4 h-4 text-cyan-400" />
-            <span className="font-bold">{collectedPiecesCount} CACHE</span>
+            <span className="font-bold">{collectedPiecesCount} / 6 PIECES</span>
           </button>
         </div>
 
