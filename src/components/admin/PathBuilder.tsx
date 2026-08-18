@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Hunt, HuntNode, HuntRoute } from "@/lib/game-engine/types";
+import { ICAT_2026_HUNT_DATA } from "@/lib/game-engine/icat-2026-seed-data";
 import { CyberCard } from "../ui/CyberCard";
 import { CyberButton } from "../ui/CyberButton";
 import { soundFx } from "@/lib/game-engine/sound-effects";
@@ -18,6 +19,8 @@ import {
   Layers,
   Sparkles,
   MapPin,
+  Flag,
+  Crosshair,
 } from "lucide-react";
 
 interface PathBuilderProps {
@@ -32,6 +35,17 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
   const [customRouteName, setCustomRouteName] = useState("");
   const [isCreatingNewRoute, setIsCreatingNewRoute] = useState(false);
 
+  // Fallback to official 20 rooms if hunt data has not yet been re-seeded
+  const effectiveNodes = {
+    ...ICAT_2026_HUNT_DATA.nodes,
+    ...(hunt.nodes || {}),
+  };
+
+  const effectiveRoutes = {
+    ...ICAT_2026_HUNT_DATA.routes,
+    ...(hunt.routes || {}),
+  };
+
   // Node creation modal
   const [showNodeModal, setShowNodeModal] = useState(false);
   const [newNodeId, setNewNodeId] = useState("");
@@ -43,11 +57,10 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
   const [newRiddleText, setNewRiddleText] = useState("");
   const [newPuzzleClue, setNewPuzzleClue] = useState("");
 
-  const [selectedNodeToAdd, setSelectedNodeToAdd] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const currentRoute = hunt.routes[activeRouteId] || {
+  const currentRoute = effectiveRoutes[activeRouteId] || {
     id: activeRouteId,
     name: `Route ${activeRouteId}`,
     nodes: [],
@@ -55,19 +68,16 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
 
   const [nodesList, setNodesList] = useState<string[]>(currentRoute.nodes || []);
 
-  // Update nodesList when activeRouteId or hunt.routes changes
+  // Update nodesList when activeRouteId changes
   React.useEffect(() => {
-    if (hunt.routes[activeRouteId]) {
-      setNodesList(hunt.routes[activeRouteId].nodes || []);
+    if (effectiveRoutes[activeRouteId]) {
+      setNodesList(effectiveRoutes[activeRouteId].nodes || []);
     }
   }, [activeRouteId, hunt.routes]);
 
-  const handleAddNodeToRoute = (nodeKey?: string) => {
-    const keyToAdd = nodeKey || selectedNodeToAdd;
-    if (!keyToAdd) return;
+  const handleAddNodeToRoute = (nodeKey: string) => {
     soundFx.playClick();
-    setNodesList([...nodesList, keyToAdd]);
-    setSelectedNodeToAdd("");
+    setNodesList([...nodesList, nodeKey]);
   };
 
   const handleRemoveNode = (index: number) => {
@@ -147,7 +157,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
     const newId = customRouteId.trim().toUpperCase();
     const newName = customRouteName.trim() || `Route ${newId}`;
 
-    hunt.routes[newId] = {
+    effectiveRoutes[newId] = {
       id: newId,
       name: newName,
       nodes: ["202"],
@@ -226,13 +236,28 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
     }
   };
 
-  // Group all 20 rooms by floor
-  const floorGroups = [
-    { floorId: "floor-1", label: "Floor 1 (Ground)" },
-    { floorId: "floor-2", label: "Floor 2" },
-    { floorId: "floor-3", label: "Floor 3" },
-    { floorId: "floor-4", label: "Floor 4" },
-    { floorId: "floor-5", label: "Floor 5" },
+  // The Official 20 Campus Rooms
+  const official20RoomKeys = [
+    "202",
+    "Vice principal cabin",
+    "401B",
+    "Staff room",
+    "306",
+    "Staff Lunch",
+    "Game Lounge",
+    "Audi",
+    "201",
+    "F.L.",
+    "401A",
+    "Textile Lab",
+    "503",
+    "305",
+    "402",
+    "Library",
+    "Canteen",
+    "Reception",
+    "Photo Lab",
+    "206",
   ];
 
   return (
@@ -246,7 +271,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
               DYNAMIC PATH FLOW BUILDER (20 CAMPUS ROOMS)
             </h2>
             <p className="text-xs text-slate-400">
-              Create, reorder, and configure route progression sequences across all 20 campus rooms
+              Customize starting point, boss stage (401A), post-boss rooms, and final treasure vault
             </p>
           </div>
         </div>
@@ -258,7 +283,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
             size="sm"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            CREATE CUSTOM NODE
+            CREATE CUSTOM ROOM
           </CyberButton>
           <CyberButton
             onClick={() => setIsCreatingNewRoute(true)}
@@ -273,7 +298,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
 
       {/* Route Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {Object.values(hunt.routes).map((r) => {
+        {Object.values(effectiveRoutes).map((r) => {
           const isActive = r.id === activeRouteId;
           return (
             <button
@@ -288,7 +313,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
                   : "border-slate-800 bg-[#070B19] text-slate-400 hover:text-slate-200"
               }`}
             >
-              {r.name || `Route ${r.id}`} ({r.nodes?.length || 0} Rooms)
+              {r.name || `Route ${r.id}`} ({r.nodes?.length || 0} Stages)
             </button>
           );
         })}
@@ -296,18 +321,31 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
 
       {/* Visual Sequence Flowchart */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-slate-400">
-          <span>PATH SEQUENCE ({activeRouteId}): {nodesList.length} STAGES</span>
-          <span className="text-cyan-400 font-bold">Starts at 202 → Boss 401A → Ends at Audi</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-200">PATH SEQUENCE ({activeRouteId}):</span>
+            <span className="text-cyan-400 font-bold">{nodesList.length} STAGES</span>
+          </div>
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="flex items-center gap-1 text-emerald-400 font-bold">
+              <MapPin className="w-3.5 h-3.5" /> Start: {nodesList[0] || "None"}
+            </span>
+            <span className="flex items-center gap-1 text-amber-400 font-bold">
+              <Crosshair className="w-3.5 h-3.5" /> Boss: 401A
+            </span>
+            <span className="flex items-center gap-1 text-yellow-400 font-bold">
+              <Flag className="w-3.5 h-3.5" /> Vault: {nodesList[nodesList.length - 1] || "None"}
+            </span>
+          </div>
         </div>
 
         <div className="p-4 rounded-xl border border-cyan-500/20 bg-[#050811] flex flex-wrap items-center gap-2 min-h-[120px] max-h-[340px] overflow-y-auto">
           {nodesList.map((nodeId, idx) => {
-            const node = hunt.nodes[nodeId];
+            const node = effectiveNodes[nodeId];
             const isFirst = idx === 0;
             const isLast = idx === nodesList.length - 1;
-            const isBoss = node?.type === "BOSS";
-            const isFinal = node?.type === "FINAL";
+            const isBoss = nodeId === "401A" || node?.type === "BOSS";
+            const isFinal = isLast || node?.type === "FINAL";
 
             return (
               <React.Fragment key={`${nodeId}-${idx}`}>
@@ -327,6 +365,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
                     <p className="text-xs font-black truncate max-w-[130px]">{node?.name || nodeId}</p>
                     <span className="text-[9px] text-cyan-400 uppercase font-bold">
                       {node?.floorId ? `FL ${node.floorId.replace("floor-", "")}` : "LEVEL"}
+                      {isBoss ? " • BOSS" : isFirst ? " • START" : isFinal ? " • VAULT" : ""}
                     </span>
                   </div>
 
@@ -365,29 +404,36 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
         </div>
       </div>
 
-      {/* Quick 20-Room Catalog Palette */}
+      {/* The 20 Campus Rooms Quick Palette */}
       <div className="space-y-2 pt-2 border-t border-slate-800">
         <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
           <span className="flex items-center gap-1.5">
             <Layers className="w-4 h-4 text-cyan-400" />
-            <span>CLICK ANY OF THE 20 CAMPUS ROOMS TO ADD TO ROUTE ({activeRouteId}):</span>
+            <span>THE 20 CAMPUS ROOMS (CLICK ANY ROOM TO APPEND TO {activeRouteId}):</span>
           </span>
-          <span className="text-slate-400 text-[11px]">20 Total Rooms</span>
+          <span className="text-slate-400 text-[11px]">20 Total Options</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
-          {Object.values(hunt.nodes).map((n) => {
-            const inCurrentRoute = nodesList.includes(n.id);
-            const countInRoute = nodesList.filter((id) => id === n.id).length;
-            const isBoss = n.type === "BOSS";
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2.5">
+          {official20RoomKeys.map((k) => {
+            const n = effectiveNodes[k] || { id: k, name: k, floorId: "floor-1" };
+            const inCurrentRoute = nodesList.includes(k);
+            const countInRoute = nodesList.filter((id) => id === k).length;
+            const isBoss = k === "401A";
+            const isStart = k === "202";
+            const isAudi = k === "Audi";
 
             return (
               <button
-                key={n.id}
-                onClick={() => handleAddNodeToRoute(n.id)}
-                className={`p-2 rounded border text-left font-mono transition-all text-xs hover:border-cyan-400 hover:bg-cyan-950/40 group relative ${
+                key={k}
+                onClick={() => handleAddNodeToRoute(k)}
+                className={`p-2.5 rounded-lg border text-left font-mono transition-all text-xs hover:border-cyan-400 hover:bg-cyan-950/40 group relative ${
                   isBoss
-                    ? "border-amber-500/50 bg-amber-950/30 text-amber-200"
+                    ? "border-amber-500/60 bg-amber-950/30 text-amber-200"
+                    : isAudi
+                    ? "border-yellow-500/60 bg-yellow-950/30 text-yellow-200"
+                    : isStart
+                    ? "border-emerald-500/60 bg-emerald-950/30 text-emerald-200"
                     : inCurrentRoute
                     ? "border-cyan-500/40 bg-slate-900/90 text-cyan-200"
                     : "border-slate-800 bg-[#070B19]/80 text-slate-300"
@@ -397,14 +443,16 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
                   <span className="text-[10px] text-cyan-400 font-bold uppercase">
                     FL {n.floorId.replace("floor-", "")}
                   </span>
-                  {countInRoute > 0 && (
+                  {countInRoute > 0 ? (
                     <span className="px-1.5 py-0.2 rounded bg-cyan-950 border border-cyan-500/40 text-[9px] text-cyan-300 font-bold">
                       x{countInRoute}
                     </span>
-                  )}
+                  ) : isBoss ? (
+                    <span className="text-[9px] text-amber-400 font-bold">BOSS</span>
+                  ) : null}
                 </div>
-                <p className="font-bold truncate text-[11px] group-hover:text-cyan-300">{n.name}</p>
-                <span className="text-[10px] text-slate-400 block truncate">ID: {n.id}</span>
+                <p className="font-bold truncate text-xs group-hover:text-cyan-300">{n.name}</p>
+                <span className="text-[10px] text-slate-400 block truncate">ID: {k}</span>
               </button>
             );
           })}

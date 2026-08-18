@@ -8,11 +8,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const { huntId = "icat-2026", resetTeams = false } = body;
 
-    // 1. Write public hunt document
-    await adminDb.collection("hunts").doc(huntId).set(ICAT_2026_HUNT_DATA, { merge: true });
+    // 1. Write public hunt document (clean replace to ensure only 20 official rooms)
+    await adminDb.collection("hunts").doc(huntId).set(ICAT_2026_HUNT_DATA);
 
     // 2. Write server-only secrets document
-    await adminDb.collection("hunt_secrets").doc(huntId).set(ICAT_2026_SECRETS, { merge: true });
+    await adminDb.collection("hunt_secrets").doc(huntId).set(ICAT_2026_SECRETS);
 
     // 3. Initialize or Reset Team Progress for standard teams
     const teams = ["RED", "WHITE", "BLACK", "CYAN", "BLUE"];
