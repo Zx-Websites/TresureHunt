@@ -11,11 +11,8 @@ import {
   AlertTriangle,
   Zap,
   ArrowRight,
-  ArrowDown,
   Trophy,
   Compass,
-  Sparkles,
-  KeyRound,
 } from "lucide-react";
 
 interface CyberMapProps {
@@ -33,17 +30,36 @@ export function CyberMap({
   // If no route is defined, fallback to available client nodes
   const routeNodeIds = activeRoute?.nodes || clientNodes.map((n) => n.id);
 
-  // Map each route step to its clientNode state in exact sequence
+  // Set of completed node IDs
+  const completedNodeIds = new Set(
+    clientNodes.filter((n) => n.state === "COMPLETED").map((n) => n.id)
+  );
+
+  // Find the exact single active stage index in the route (the FIRST node that is not completed)
+  const activeStageIndex = routeNodeIds.findIndex((id) => !completedNodeIds.has(id));
+
+  // Map each route step to its strict sequential state
   const stages = routeNodeIds.map((nodeId, idx) => {
-    const node = clientNodes.find((n) => n.id === nodeId) || {
+    const rawNode = clientNodes.find((n) => n.id === nodeId) || {
       id: nodeId,
       name: "Classified Objective",
       floorId: "floor-1",
       type: nodeId === "401A" ? "BOSS" : idx === routeNodeIds.length - 1 ? "FINAL" : "NORMAL",
       position: { x: 50, y: 50 },
-      state: idx === 0 ? "AVAILABLE" : "LOCKED",
+      state: "LOCKED",
       nextNodes: [],
     };
+
+    const isCompleted = completedNodeIds.has(nodeId);
+    // ONLY ONE SINGLE STAGE can EVER be active (the first uncompleted stage index)
+    const isAvailable = !isCompleted && idx === activeStageIndex;
+    const isLocked = !isCompleted && !isAvailable;
+
+    const node: ClientHuntNode = {
+      ...rawNode,
+      state: isCompleted ? "COMPLETED" : isAvailable ? "AVAILABLE" : "LOCKED",
+    };
+
     return {
       stageNumber: idx + 1,
       nodeId,
@@ -52,14 +68,13 @@ export function CyberMap({
       isLast: idx === routeNodeIds.length - 1,
       isBoss: nodeId === "401A" || node.type === "BOSS",
       isFinal: idx === routeNodeIds.length - 1 || node.type === "FINAL",
-      isCompleted: node.state === "COMPLETED",
-      isAvailable: node.state === "AVAILABLE",
-      isLocked: node.state === "LOCKED" || !node.state,
+      isCompleted,
+      isAvailable,
+      isLocked,
     };
   });
 
   const completedCount = stages.filter((s) => s.isCompleted).length;
-  const activeStage = stages.find((s) => s.isAvailable);
 
   const handleNodeClick = (stage: typeof stages[0]) => {
     if (stage.isLocked) {
@@ -81,7 +96,7 @@ export function CyberMap({
               SEQUENTIAL ROUTE MATRIX ({activeRoute?.name || "ACTIVE MISSION"})
             </h2>
             <p className="text-xs text-slate-400">
-              Solve each riddle stage in exact order. Solve current riddle to unlock next room.
+              Strict sequential progression: exactly ONE active riddle at a time in chronological order.
             </p>
           </div>
         </div>
@@ -192,11 +207,11 @@ export function CyberMap({
                           ? "text-emerald-200"
                           : isAvailable
                           ? isBoss
-                            ? "text-amber-200"
+                            ? "SECTOR 401A [BOSS CHALLENGE]"
                             : isFinal
-                            ? "text-yellow-200"
-                            : "text-cyan-200"
-                          : "text-slate-400"
+                            ? "THE GRAND FINAL VAULT"
+                            : "ACTIVE RIDDLE OBJECTIVE"
+                          : `STAGE #${stage.stageNumber} [CLASSIFIED]`
                       }`}
                     >
                       {isCompleted
