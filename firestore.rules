@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User profile documents: students can read/write their own profile
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Public Hunt configurations: readable by authenticated users
+    match /hunts/{huntId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.admin == true;
+
+      match /floors/{floorId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.token.admin == true;
+      }
+
+      match /nodes/{nodeId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.token.admin == true;
+      }
+
+      match /routes/{routeId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.token.admin == true;
+      }
+
+      match /teams/{teamId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.token.admin == true;
+      }
+    }
+
+    // AUTHORITATIVE TEAM PROGRESS:
+    // Clients can READ realtime updates for their team.
+    // DIRECT WRITES FROM CLIENT ARE STRICTLY FORBIDDEN!
+    // All progression writes MUST go through Next.js server Route Handlers via Firebase Admin SDK.
+    match /teamProgress/{progressId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only Admin SDK (bypasses rules) can mutate progression
+    }
+
+    // SECRET CODES AND ANSWERS:
+    // NEVER readable or writeable by any client SDK.
+    // Accessible strictly via Firebase Admin SDK on the server.
+    match /hunt_secrets/{huntId} {
+      allow read, write: if false;
+    }
+  }
+}
