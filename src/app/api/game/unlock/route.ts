@@ -92,15 +92,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Verify code against server secret (supports route-specific code first, then global room code)
+    // 6. Verify code against server secret (checks route-specific code or global room code)
     const routeSecretKey = `${progress.routeId}_${nodeId}`;
-    const secretEntry = secrets.codes[routeSecretKey] || secrets.codes[nodeId];
-    const correctCode = secretEntry?.code?.trim().toUpperCase();
+    const routeCode = secrets.codes[routeSecretKey]?.code?.trim().toUpperCase();
+    const globalCode = secrets.codes[nodeId]?.code?.trim().toUpperCase();
     const providedCode = enteredCode.toString().trim().toUpperCase();
 
-    if (!correctCode || providedCode !== correctCode) {
+    const clean = (s?: string) => (s ? s.replace(/[^A-Z0-9]/g, "") : "");
+
+    const isMatch =
+      (routeCode && (providedCode === routeCode || clean(providedCode) === clean(routeCode))) ||
+      (globalCode && (providedCode === globalCode || clean(providedCode) === clean(globalCode)));
+
+    if (!isMatch) {
       return NextResponse.json(
-        { success: false, error: "ACCESS DENIED: Invalid clearance cipher for your squad route." },
+        { success: false, error: "ACCESS DENIED: Invalid clearance cipher for this sector." },
         { status: 403 }
       );
     }
