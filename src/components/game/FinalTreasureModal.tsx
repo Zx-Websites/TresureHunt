@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect } from "react";
-import confetti from "canvas-confetti";
 import { Hunt, TeamProgress } from "@/lib/game-engine/types";
 import { CyberCard } from "../ui/CyberCard";
 import { CyberButton } from "../ui/CyberButton";
@@ -22,30 +21,33 @@ export function FinalTreasureModal({
   useEffect(() => {
     soundFx.playVictoryFanfare();
 
-    // Trigger celebratory cyber particle confetti
-    const end = Date.now() + 3.5 * 1000;
-    const colors = ["#00f0ff", "#ff007f", "#00ff9d", "#ffb800"];
+    // Trigger celebratory cyber particle confetti dynamically
+    import("canvas-confetti").then((confettiModule) => {
+      const confetti = confettiModule.default || confettiModule;
+      const end = Date.now() + 3.5 * 1000;
+      const colors = ["#00f0ff", "#ff007f", "#00ff9d", "#ffb800"];
 
-    (function frame() {
-      confetti({
-        particleCount: 4,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors: colors,
-      });
-      confetti({
-        particleCount: 4,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors: colors,
-      });
+      (function frame() {
+        confetti({
+          particleCount: 4,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: colors,
+        });
+        confetti({
+          particleCount: 4,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: colors,
+        });
 
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
-    })();
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      })();
+    }).catch(() => {});
   }, []);
 
   const treasure = hunt.treasure;

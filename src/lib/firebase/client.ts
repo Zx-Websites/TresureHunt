@@ -31,11 +31,4 @@ googleProvider.setCustomParameters({
   prompt: "select_account",
 });
 
-// Configure local persistence across browser restarts
-if (typeof window !== "undefined") {
-  setPersistence(auth, browserLocalPersistence).catch((err) => {
-    console.warn("Firebase Auth persistence warning:", err);
-  });
-}
-
 export { app };
