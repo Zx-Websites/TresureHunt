@@ -217,27 +217,22 @@ export function NodeDetailsModal({
             )}
           </div>
 
-          {/* Boss Encounter Minigame Launcher */}
-          {isBoss && !isCompleted && node.codeSource === "MINIGAME" && (
-            <div className="p-4 rounded-lg border border-amber-500/40 bg-amber-950/30 space-y-3 text-center">
-              <div className="flex items-center justify-center gap-2 text-amber-400 font-bold text-xs">
-                <Gamepad2 className="w-4 h-4" />
-                <span>UNITY MAINFRAME ENCOUNTER</span>
+          {/* Boss Encounter Physical Campus Station Guidance */}
+          {isBoss && !isCompleted && (
+            <div className="p-4 rounded-lg border-2 border-amber-500/60 bg-amber-950/40 space-y-2 text-center animate-pulse">
+              <div className="flex items-center justify-center gap-2 text-amber-300 font-bold text-xs">
+                <Gamepad2 className="w-5 h-5 text-amber-400" />
+                <span>PHYSICAL CAMPUS PC CHALLENGE (ROOM 401A)</span>
               </div>
-              <p className="text-xs text-amber-200">
-                Play the Unity arcade station in Room 401A. Score <span className="font-bold">{node.minigame?.minimumScore || 850}+ PTS</span> to decrypt your clearance cipher.
+              <p className="text-xs text-amber-100 leading-relaxed font-semibold">
+                Play the standalone arcade game loaded on the campus workstation in <span className="text-amber-300 font-black">Room 401A</span>.
               </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <CyberButton
-                  onClick={() => setShowBossMinigame(true)}
-                  variant="amber"
-                  size="sm"
-                  className="flex-1"
-                >
-                  <Gamepad2 className="w-3.5 h-3.5 mr-1.5" />
-                  PLAY WEB OVERRIDE TEST
-                </CyberButton>
+              <div className="p-2.5 rounded bg-black/50 border border-amber-500/40 text-amber-300 text-xs font-mono">
+                🏆 TARGET OBJECTIVE: SCORE <span className="text-base font-black text-amber-200">400+ PTS</span> IN THE GAME
               </div>
+              <p className="text-[11px] text-slate-300">
+                Reaching 400 points on the campus PC will display your squad&apos;s secret clearance code on the game screen. Enter that code into the keypad below!
+              </p>
             </div>
           )}
 

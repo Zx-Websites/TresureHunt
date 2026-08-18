@@ -404,17 +404,17 @@ export const ICAT_2026_HUNT_DATA: Hunt = {
       type: "BOSS",
       position: { x: 50, y: 25 },
       riddle: {
-        title: "BOSS GATEWAY: Sector 401A Unity Mainframe",
-        text: "WARNING: High-security cyber defense active! Travel to Room 401A. The Unity Arcade Challenge Station is loaded on the workstation. Achieve >= 850 PTS in the Unity game to receive your clearance cipher and unlock your post-boss route stages!",
-        hint: "Play the Unity Arcade Game in Room 401A. Score >= 850 PTS to unlock the secret cipher to decrypt this sector and unlock your next route nodes!",
+        title: "BOSS ENCOUNTER: Sector 401A Arcade Station",
+        text: "Travel to Room 401A on Floor 4. Play the campus challenge game loaded on the lab workstation. Achieve a score of 400+ points in the game to reveal your squad's secret clearance cipher on the screen. Enter that cipher below to decrypt Sector 401A and unlock your next route stages!",
+        hint: "Score >= 400 points in the Room 401A campus PC game. The game screen will reveal your squad's secret code.",
       },
       codeSource: "MINIGAME",
       nextNodes: ["F.L.", "Canteen", "206"],
       minigame: {
-        gameId: "401A_UNITY_OVERRIDE",
-        minimumScore: 850,
-        title: "Unity Cyber Mainframe Override",
-        instructions: "Play the Unity game in Room 401A or online. Achieve >= 850 PTS to decrypt your squad clearance cipher.",
+        gameId: "401A_CAMPUS_GAME",
+        minimumScore: 400,
+        title: "Campus 401A Arcade Challenge",
+        instructions: "Play the game on the campus PC in Room 401A. Score >= 400 points to reveal the code.",
       },
       // NO PIECE
     },
@@ -701,7 +701,7 @@ export const ICAT_2026_SECRETS: HuntSecrets = {
   codes: {
     // Universal Start & Vault Codes
     "202": { code: "ALPHA202" },
-    "401A": { code: "OVERRIDE401A", minigameScoreThreshold: 850 },
+    "401A": { code: "OVERRIDE401A", minigameScoreThreshold: 400 },
     "Audi": { code: "AUDITORIUM" },
 
     // Route P1 Specific Codes
@@ -713,7 +713,7 @@ export const ICAT_2026_SECRETS: HuntSecrets = {
     "P1_Staff Lunch": { code: "PANTRY" },
     "P1_Game Lounge": { code: "LOUNGE" },
     "P1_Textile Lab": { code: "TEXTILE" },
-    "P1_401A": { code: "OVERRIDE401A", minigameScoreThreshold: 850 },
+    "P1_401A": { code: "OVERRIDE401A", minigameScoreThreshold: 400 },
     "P1_F.L.": { code: "FASHIONLAB" },
     "P1_201": { code: "STUDIO201" },
     "P1_Audi": { code: "AUDITORIUM" },
@@ -727,7 +727,7 @@ export const ICAT_2026_SECRETS: HuntSecrets = {
     "P2_Staff room": { code: "STAFFROOM" },
     "P2_402": { code: "AUDIO402" },
     "P2_Reception": { code: "RECEPTION" },
-    "P2_401A": { code: "OVERRIDE401A", minigameScoreThreshold: 850 },
+    "P2_401A": { code: "OVERRIDE401A", minigameScoreThreshold: 400 },
     "P2_Canteen": { code: "CAFE" },
     "P2_Library": { code: "LIBRARY" },
     "P2_Audi": { code: "AUDITORIUM" },
@@ -741,7 +741,7 @@ export const ICAT_2026_SECRETS: HuntSecrets = {
     "P3_503": { code: "SYNAPSE503" },
     "P3_305": { code: "MATRIX305" },
     "P3_Staff Lunch": { code: "PANTRY" },
-    "P3_401A": { code: "OVERRIDE401A", minigameScoreThreshold: 850 },
+    "P3_401A": { code: "OVERRIDE401A", minigameScoreThreshold: 400 },
     "P3_206": { code: "CG206" },
     "P3_Reception": { code: "RECEPTION" },
     "P3_Audi": { code: "AUDITORIUM" },
