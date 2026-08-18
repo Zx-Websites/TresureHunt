@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Layers,
-  KeyRound,
+  Sparkles,
+  MapPin,
 } from "lucide-react";
 
 interface PathBuilderProps {
@@ -54,17 +55,18 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
 
   const [nodesList, setNodesList] = useState<string[]>(currentRoute.nodes || []);
 
-  // Update nodesList when activeRouteId changes
+  // Update nodesList when activeRouteId or hunt.routes changes
   React.useEffect(() => {
     if (hunt.routes[activeRouteId]) {
       setNodesList(hunt.routes[activeRouteId].nodes || []);
     }
   }, [activeRouteId, hunt.routes]);
 
-  const handleAddNodeToRoute = () => {
-    if (!selectedNodeToAdd) return;
+  const handleAddNodeToRoute = (nodeKey?: string) => {
+    const keyToAdd = nodeKey || selectedNodeToAdd;
+    if (!keyToAdd) return;
     soundFx.playClick();
-    setNodesList([...nodesList, selectedNodeToAdd]);
+    setNodesList([...nodesList, keyToAdd]);
     setSelectedNodeToAdd("");
   };
 
@@ -180,7 +182,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
       puzzleLocation: newPuzzleClue.trim()
         ? {
             clue: newPuzzleClue.trim(),
-            pieceId: `PIECE_${newNodeId.trim().toUpperCase()}`,
+            pieceId: `PIECE_${newNodeId.trim().toUpperCase().replace(/[\s.-]+/g, "_")}`,
           }
         : undefined,
       minigame:
@@ -224,19 +226,27 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
     }
   };
 
-  const allAvailableNodeKeys = Object.keys(hunt.nodes);
+  // Group all 20 rooms by floor
+  const floorGroups = [
+    { floorId: "floor-1", label: "Floor 1 (Ground)" },
+    { floorId: "floor-2", label: "Floor 2" },
+    { floorId: "floor-3", label: "Floor 3" },
+    { floorId: "floor-4", label: "Floor 4" },
+    { floorId: "floor-5", label: "Floor 5" },
+  ];
 
   return (
     <CyberCard className="p-6 space-y-6 border-cyan-500/40 font-mono">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div className="flex items-center gap-2 text-cyan-400">
           <Route className="w-5 h-5" />
           <div>
             <h2 className="font-black text-base text-slate-100 uppercase tracking-wider">
-              DYNAMIC PATH FLOW BUILDER & VISUALIZER
+              DYNAMIC PATH FLOW BUILDER (20 CAMPUS ROOMS)
             </h2>
             <p className="text-xs text-slate-400">
-              Create, reorder, and configure route progression sequences directly
+              Create, reorder, and configure route progression sequences across all 20 campus rooms
             </p>
           </div>
         </div>
@@ -248,7 +258,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
             size="sm"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            CREATE NEW ROOM/NODE
+            CREATE CUSTOM NODE
           </CyberButton>
           <CyberButton
             onClick={() => setIsCreatingNewRoute(true)}
@@ -278,7 +288,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
                   : "border-slate-800 bg-[#070B19] text-slate-400 hover:text-slate-200"
               }`}
             >
-              {r.name || `Route ${r.id}`} ({r.nodes?.length || 0} Nodes)
+              {r.name || `Route ${r.id}`} ({r.nodes?.length || 0} Rooms)
             </button>
           );
         })}
@@ -287,11 +297,11 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
       {/* Visual Sequence Flowchart */}
       <div className="space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-400">
-          <span>PATH FLOWCHART (SEQUENCE ORDER)</span>
-          <span>{nodesList.length} TOTAL STAGES</span>
+          <span>PATH SEQUENCE ({activeRouteId}): {nodesList.length} STAGES</span>
+          <span className="text-cyan-400 font-bold">Starts at 202 → Boss 401A → Ends at Audi</span>
         </div>
 
-        <div className="p-4 rounded-xl border border-cyan-500/20 bg-[#050811] flex flex-wrap items-center gap-2 max-h-[300px] overflow-y-auto">
+        <div className="p-4 rounded-xl border border-cyan-500/20 bg-[#050811] flex flex-wrap items-center gap-2 min-h-[120px] max-h-[340px] overflow-y-auto">
           {nodesList.map((nodeId, idx) => {
             const node = hunt.nodes[nodeId];
             const isFirst = idx === 0;
@@ -314,8 +324,8 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
                 >
                   <span className="text-[10px] font-bold text-slate-400">#{idx + 1}</span>
                   <div>
-                    <p className="text-xs font-black truncate max-w-[120px]">{node?.name || nodeId}</p>
-                    <span className="text-[9px] text-cyan-400 uppercase">
+                    <p className="text-xs font-black truncate max-w-[130px]">{node?.name || nodeId}</p>
+                    <span className="text-[9px] text-cyan-400 uppercase font-bold">
                       {node?.floorId ? `FL ${node.floorId.replace("floor-", "")}` : "LEVEL"}
                     </span>
                   </div>
@@ -355,44 +365,70 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
         </div>
       </div>
 
-      {/* Add Node to Current Route */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-        <div className="flex-1 w-full">
-          <select
-            value={selectedNodeToAdd}
-            onChange={(e) => setSelectedNodeToAdd(e.target.value)}
-            className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-cyan-300 focus:outline-none focus:border-cyan-400"
-          >
-            <option value="">-- Choose Classroom / Lab Node to Append --</option>
-            {allAvailableNodeKeys.map((k) => (
-              <option key={k} value={k}>
-                {hunt.nodes[k]?.name || k} (ID: {k}) - {hunt.nodes[k]?.floorId}
-              </option>
-            ))}
-          </select>
+      {/* Quick 20-Room Catalog Palette */}
+      <div className="space-y-2 pt-2 border-t border-slate-800">
+        <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
+          <span className="flex items-center gap-1.5">
+            <Layers className="w-4 h-4 text-cyan-400" />
+            <span>CLICK ANY OF THE 20 CAMPUS ROOMS TO ADD TO ROUTE ({activeRouteId}):</span>
+          </span>
+          <span className="text-slate-400 text-[11px]">20 Total Rooms</span>
         </div>
 
-        <CyberButton
-          onClick={handleAddNodeToRoute}
-          disabled={!selectedNodeToAdd}
-          variant="cyan"
-          size="sm"
-          className="whitespace-nowrap"
-        >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          APPEND TO {activeRouteId}
-        </CyberButton>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+          {Object.values(hunt.nodes).map((n) => {
+            const inCurrentRoute = nodesList.includes(n.id);
+            const countInRoute = nodesList.filter((id) => id === n.id).length;
+            const isBoss = n.type === "BOSS";
 
-        <CyberButton
-          onClick={handleSaveRoute}
-          loading={isSaving}
-          variant="green"
-          size="sm"
-          className="whitespace-nowrap"
-        >
-          <Save className="w-3.5 h-3.5 mr-1" />
-          SAVE ROUTE {activeRouteId}
-        </CyberButton>
+            return (
+              <button
+                key={n.id}
+                onClick={() => handleAddNodeToRoute(n.id)}
+                className={`p-2 rounded border text-left font-mono transition-all text-xs hover:border-cyan-400 hover:bg-cyan-950/40 group relative ${
+                  isBoss
+                    ? "border-amber-500/50 bg-amber-950/30 text-amber-200"
+                    : inCurrentRoute
+                    ? "border-cyan-500/40 bg-slate-900/90 text-cyan-200"
+                    : "border-slate-800 bg-[#070B19]/80 text-slate-300"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-cyan-400 font-bold uppercase">
+                    FL {n.floorId.replace("floor-", "")}
+                  </span>
+                  {countInRoute > 0 && (
+                    <span className="px-1.5 py-0.2 rounded bg-cyan-950 border border-cyan-500/40 text-[9px] text-cyan-300 font-bold">
+                      x{countInRoute}
+                    </span>
+                  )}
+                </div>
+                <p className="font-bold truncate text-[11px] group-hover:text-cyan-300">{n.name}</p>
+                <span className="text-[10px] text-slate-400 block truncate">ID: {n.id}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Save Action Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-800">
+        <p className="text-xs text-slate-400">
+          Reorder stages with arrows, or click any room above to append to {activeRouteId}.
+        </p>
+
+        <div className="flex gap-2 w-full sm:w-auto">
+          <CyberButton
+            onClick={handleSaveRoute}
+            loading={isSaving}
+            variant="green"
+            size="md"
+            className="w-full sm:w-auto font-bold"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            SAVE & PUBLISH ROUTE {activeRouteId}
+          </CyberButton>
+        </div>
       </div>
 
       {statusMsg && (
@@ -463,7 +499,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
         </div>
       )}
 
-      {/* Modal: Create New Node */}
+      {/* Modal: Create New Custom Node */}
       {showNodeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <form
@@ -471,12 +507,12 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
             className="w-full max-w-lg rounded-xl border border-cyan-400 bg-[#070B19] p-6 space-y-3.5 shadow-[0_0_30px_rgba(0,240,255,0.3)] text-xs max-h-[90vh] overflow-y-auto"
           >
             <h3 className="font-bold text-base text-slate-100 uppercase tracking-wider border-b border-slate-800 pb-2">
-              CREATE NEW ROOM / SECTOR NODE
+              CREATE NEW CAMPUS SECTOR
             </h3>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Sector ID</label>
+                <label className="block text-slate-400 mb-1">Room / Sector ID</label>
                 <input
                   type="text"
                   placeholder="e.g. 308 or Studio-A"
@@ -544,7 +580,7 @@ export function PathBuilder({ hunt, idToken, onRefresh }: PathBuilderProps) {
             </div>
 
             <div>
-              <label className="block text-slate-400 mb-1">Secret Clearance Code</label>
+              <label className="block text-slate-400 mb-1">Secret Clearance Cipher</label>
               <input
                 type="text"
                 placeholder="e.g. CIPHER308"
