@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/firebase/auth-context";
 import { useHuntGame } from "@/lib/game-engine/useHuntGame";
 import { LiveLeaderboard } from "@/components/admin/LiveLeaderboard";
 import { QuickSeeder } from "@/components/admin/QuickSeeder";
+import { PathBuilder } from "@/components/admin/PathBuilder";
 import { CyberCard } from "@/components/ui/CyberCard";
 import { CyberButton } from "@/components/ui/CyberButton";
 import { soundFx } from "@/lib/game-engine/sound-effects";
@@ -93,6 +94,9 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Real-time Telemetry Leaderboard */}
         <LiveLeaderboard hunt={hunt} idToken={idToken} />
+
+        {/* Interactive Dynamic Path Flow Builder */}
+        <PathBuilder hunt={hunt} idToken={idToken} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Quick Seeder */}

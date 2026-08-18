@@ -243,33 +243,75 @@ export function CyberMap({
             <circle cx="300" cy="200" r="70" fill="none" stroke="rgba(0, 240, 255, 0.08)" strokeWidth="1" />
 
             {/* Animated glowing route lines between on-floor nodes */}
-            {floorNodes.map((node) => {
-              return node.nextNodes.map((targetId) => {
-                const targetNode = floorNodes.find((n) => n.id === targetId);
-                if (!targetNode) return null;
+            {(() => {
+              const lines: React.ReactNode[] = [];
+              const renderedPairs = new Set<string>();
 
-                const isIlluminated = node.state === "COMPLETED";
-                const x1 = (node.position.x / 100) * 600;
-                const y1 = (node.position.y / 100) * 400;
-                const x2 = (targetNode.position.x / 100) * 600;
-                const y2 = (targetNode.position.y / 100) * 400;
+              // 1. Connect sequential nodes from activeRoute
+              if (activeRoute && Array.isArray(activeRoute.nodes)) {
+                for (let i = 0; i < activeRoute.nodes.length - 1; i++) {
+                  const fromId = activeRoute.nodes[i];
+                  const toId = activeRoute.nodes[i + 1];
+                  const fromNode = floorNodes.find((n) => n.id === fromId);
+                  const toNode = floorNodes.find((n) => n.id === toId);
 
-                return (
-                  <g key={`path-${node.id}-${targetId}`}>
-                    <line
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke={isIlluminated ? "#00f0ff" : "rgba(51, 65, 85, 0.5)"}
-                      strokeWidth={isIlluminated ? "2.5" : "1.5"}
-                      strokeDasharray={isIlluminated ? "8 4" : "4 4"}
-                      className={isIlluminated ? "animate-pulse" : ""}
-                    />
-                  </g>
-                );
+                  if (fromNode && toNode) {
+                    const pairKey = `${fromId}->${toId}`;
+                    renderedPairs.add(pairKey);
+                    const isIlluminated = fromNode.state === "COMPLETED";
+                    const x1 = (fromNode.position.x / 100) * 600;
+                    const y1 = (fromNode.position.y / 100) * 400;
+                    const x2 = (toNode.position.x / 100) * 600;
+                    const y2 = (toNode.position.y / 100) * 400;
+
+                    lines.push(
+                      <line
+                        key={`route-line-${pairKey}`}
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke={isIlluminated ? "#00f0ff" : "rgba(51, 65, 85, 0.6)"}
+                        strokeWidth={isIlluminated ? "2.5" : "1.5"}
+                        strokeDasharray={isIlluminated ? "8 4" : "4 4"}
+                        className={isIlluminated ? "animate-pulse" : ""}
+                      />
+                    );
+                  }
+                }
+              }
+
+              // 2. Connect explicit nextNodes
+              floorNodes.forEach((node) => {
+                (node.nextNodes || []).forEach((targetId) => {
+                  const targetNode = floorNodes.find((n) => n.id === targetId);
+                  const pairKey = `${node.id}->${targetId}`;
+                  if (targetNode && !renderedPairs.has(pairKey)) {
+                    renderedPairs.add(pairKey);
+                    const isIlluminated = node.state === "COMPLETED";
+                    const x1 = (node.position.x / 100) * 600;
+                    const y1 = (node.position.y / 100) * 400;
+                    const x2 = (targetNode.position.x / 100) * 600;
+                    const y2 = (targetNode.position.y / 100) * 400;
+
+                    lines.push(
+                      <line
+                        key={`next-line-${pairKey}`}
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke={isIlluminated ? "#00f0ff" : "rgba(51, 65, 85, 0.4)"}
+                        strokeWidth={isIlluminated ? "2" : "1.2"}
+                        strokeDasharray={isIlluminated ? "8 4" : "4 4"}
+                      />
+                    );
+                  }
+                });
               });
-            })}
+
+              return lines;
+            })()}
           </svg>
 
           {/* Interactive Node Markers Overlay */}
