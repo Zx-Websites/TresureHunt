@@ -2,7 +2,7 @@ import { ClientHuntNode, Hunt, HuntNode, TeamProgress } from "./types";
 
 /**
  * Calculates the next nodes to unlock when a node is completed by a team.
- * Uses both the team's designated route and the node graph structure.
+ * Guarantees strict single-node sequential progression along the team's assigned route.
  */
 export function calculateNextUnlockedNodes(
   completedNodeId: string,
@@ -18,44 +18,27 @@ export function calculateNextUnlockedNodes(
   currentCompleted.add(completedNodeId);
 
   const route = hunt.routes[progress.routeId];
-  const completedNode = hunt.nodes[completedNodeId];
-
-  const candidateNext = new Set<string>(progress.unlockedNodes.filter((id) => id !== completedNodeId));
-
   let nextInRoute: string | null = null;
   let isHuntCompleted = false;
 
-  if (route && route.nodes && route.nodes.length > 0) {
+  if (route && Array.isArray(route.nodes) && route.nodes.length > 0) {
     const routeIndex = route.nodes.indexOf(completedNodeId);
     if (routeIndex !== -1 && routeIndex + 1 < route.nodes.length) {
+      // Strictly unlock only the single next sequential stage
       nextInRoute = route.nodes[routeIndex + 1];
-      candidateNext.add(nextInRoute);
     } else if (routeIndex === route.nodes.length - 1) {
-      // Completed the last node in route
+      // Completed the final stage in route
       isHuntCompleted = true;
     }
   }
 
-  // Also allow graph-based nextNodes if defined
-  if (completedNode && Array.isArray(completedNode.nextNodes)) {
-    completedNode.nextNodes.forEach((id) => {
-      // If a route is defined, prioritize nodes that belong to this route or are reachable
-      if (!route || route.nodes.includes(id)) {
-        candidateNext.add(id);
-      }
-    });
-  }
-
-  // Remove any already completed nodes from unlocked list
-  const finalUnlocked = Array.from(candidateNext).filter((id) => !currentCompleted.has(id));
-
-  // Determine new currentNodeId
-  const newCurrentNodeId = nextInRoute || (finalUnlocked.length > 0 ? finalUnlocked[0] : completedNodeId);
-
-  // Check if final node is completed or all route nodes are completed
+  const completedNode = hunt.nodes[completedNodeId];
   if (completedNode?.type === "FINAL" || isHuntCompleted) {
     isHuntCompleted = true;
   }
+
+  const finalUnlocked = nextInRoute ? [nextInRoute] : [];
+  const newCurrentNodeId = nextInRoute || completedNodeId;
 
   return {
     newUnlockedNodes: finalUnlocked,
@@ -67,7 +50,8 @@ export function calculateNextUnlockedNodes(
 
 /**
  * Generates sanitized ClientHuntNode items for the student UI.
- * Strictly guarantees that locked room names, riddles, and secrets are obscured.
+ * Strictly guarantees that future room names and secrets are obscured,
+ * and only the single active node presents its riddle.
  */
 export function sanitizeNodesForClient(
   nodes: Record<string, HuntNode>,
@@ -119,7 +103,7 @@ export function sanitizeNodesForClient(
     // LOCKED: Obscure room name, strip riddle and puzzle details
     return {
       id: node.id,
-      name: "Classified Sector",
+      name: "Classified Objective",
       floorId: node.floorId,
       type: node.type,
       position: node.position,

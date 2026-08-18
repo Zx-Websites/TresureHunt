@@ -6,7 +6,6 @@ import { useHuntGame } from "@/lib/game-engine/useHuntGame";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { TeamSelector } from "@/components/auth/TeamSelector";
 import { CyberHeader } from "@/components/game/CyberHeader";
-import { FloorSelector } from "@/components/game/FloorSelector";
 import { CyberMap } from "@/components/game/CyberMap";
 import { NodeDetailsModal } from "@/components/game/NodeDetailsModal";
 import { PuzzleLocationPanel } from "@/components/game/PuzzleLocationPanel";
@@ -36,8 +35,6 @@ export default function HomePage() {
     hunt,
     progress,
     clientNodes,
-    currentFloorId,
-    setCurrentFloorId,
     selectedNode,
     setSelectedNode,
     isSubmittingCode,
@@ -107,17 +104,9 @@ export default function HomePage() {
   }
 
   // 4. Main Game Screen for Students
-  const currentFloor =
-    hunt.floors.find((f) => f.id === currentFloorId) || hunt.floors[0] || {
-      id: "floor-2",
-      floorNumber: 2,
-      name: "Floor 2",
-      nodeIds: ["202"],
-    };
-
   const activeRoute = progress?.routeId ? hunt.routes[progress.routeId] : null;
 
-  // Active or Available Node for Quick Access
+  // Active or Available Node for Quick Access (Strictly single active riddle)
   const nextAvailableNode = clientNodes.find((n) => n.state === "AVAILABLE");
 
   const handleQuickNodeClick = (node: ClientHuntNode) => {
@@ -135,17 +124,9 @@ export default function HomePage() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 space-y-4">
-        {/* Floor Navigation Tabs */}
-        <FloorSelector
-          floors={hunt.floors}
-          currentFloorId={currentFloorId}
-          onSelectFloor={setCurrentFloorId}
-          clientNodes={clientNodes}
-        />
-
-        {/* Interactive SVG Cyber Map */}
+        {/* Non-Draggable Connected Sequential Stage Flowchart Map */}
         <CyberMap
-          currentFloor={currentFloor}
+          hunt={hunt}
           clientNodes={clientNodes}
           activeRoute={activeRoute}
           onSelectNode={(node) => setSelectedNode(node)}
@@ -158,11 +139,11 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs text-cyan-400 font-bold">
                 <Compass className="w-4 h-4 animate-spin" />
-                <span>NEXT TACTICAL TARGET</span>
+                <span>CURRENT ACTIVE TARGET (STAGE {progress?.completedNodes?.length ? progress.completedNodes.length + 1 : 1})</span>
               </span>
               {nextAvailableNode && (
-                <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40">
-                  SECTOR {nextAvailableNode.id}
+                <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40 font-bold">
+                  {nextAvailableNode.type === "BOSS" ? "BOSS 401A" : "ENCRYPTED RIDDLE"}
                 </span>
               )}
             </div>
@@ -171,7 +152,7 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <div>
                   <h3 className="font-bold text-sm sm:text-base text-slate-100">
-                    {nextAvailableNode.name}
+                    {nextAvailableNode.riddle?.title || "Encrypted Mission Clue"}
                   </h3>
                   <p className="text-xs text-slate-400 italic line-clamp-1">
                     &quot;{nextAvailableNode.riddle?.text}&quot;
@@ -184,7 +165,7 @@ export default function HomePage() {
                   className="whitespace-nowrap"
                 >
                   <KeyRound className="w-3.5 h-3.5 mr-1.5" />
-                  INSPECT & ENTER CIPHER
+                  OPEN RIDDLE & ENTER CIPHER
                 </CyberButton>
               </div>
             ) : progress?.status === "completed" ? (
