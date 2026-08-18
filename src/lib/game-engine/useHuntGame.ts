@@ -134,7 +134,14 @@ export function useHuntGame(
 
   // 6. Submit Code via Server API
   const submitCode = useCallback(
-    async (nodeId: string, enteredCode: string): Promise<{ success: boolean; message: string; puzzleLocation?: unknown }> => {
+    async (
+      nodeId: string,
+      enteredCode: string
+    ): Promise<{
+      success: boolean;
+      message: string;
+      puzzleLocation?: { clue: string; hint?: string; pieceId?: string } | null;
+    }> => {
       if (!teamId || !nodeId || !enteredCode.trim()) {
         soundFx.playAccessDenied();
         return { success: false, message: "Enter a valid clearance code." };

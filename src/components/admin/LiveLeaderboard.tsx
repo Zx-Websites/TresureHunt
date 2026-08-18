@@ -203,7 +203,7 @@ export function LiveLeaderboard({ hunt, idToken }: LiveLeaderboardProps) {
                         <CyberButton
                           onClick={() => handleTeamAction(t.id, "DISQUALIFY")}
                           loading={activeActionTeam === `${t.id}_DISQUALIFY`}
-                          variant="rose"
+                          variant="red"
                           size="sm"
                           className="text-[10px] px-2 py-1"
                         >
