@@ -88,7 +88,7 @@ export function NodeDetailsModal({
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/40 font-mono text-xs font-bold text-cyan-300">
-                SECTOR {node.id}
+                {isCompleted ? `SECTOR: ${node.name}` : isBoss ? "BOSS SECTOR 401A" : "MISSION OBJECTIVE: DECODE RIDDLE"}
               </span>
               {isCompleted && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-bold border border-emerald-500/40 bg-emerald-950/60 text-emerald-300">
@@ -96,10 +96,10 @@ export function NodeDetailsModal({
                   CLEARED
                 </span>
               )}
-              {isBoss && (
+              {isBoss && !isCompleted && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-bold border border-amber-500/40 bg-amber-950/60 text-amber-300">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                  BOSS SECTOR
+                  MAINFRAME BOSS
                 </span>
               )}
             </div>
@@ -112,10 +112,10 @@ export function NodeDetailsModal({
             </button>
           </div>
 
-          {/* Node Title & Code Source Badge */}
+          {/* Riddle Heading & Clue Badge */}
           <div className="space-y-2 font-mono">
             <h2 className="text-xl font-black text-slate-100 tracking-wide">
-              {node.name}
+              {isCompleted ? `${node.name} [CLEARED]` : node.riddle?.title || "Encrypted Navigation Clue"}
             </h2>
 
             <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded border text-xs font-semibold ${currentBadge.color}`}>

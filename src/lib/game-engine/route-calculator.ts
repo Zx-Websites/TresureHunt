@@ -103,7 +103,7 @@ export function sanitizeNodesForClient(
     if (isUnlocked) {
       return {
         id: node.id,
-        name: node.name,
+        name: node.type === "BOSS" ? "Sector 401A [BOSS ENCOUNTER]" : "Mystery Objective",
         floorId: node.floorId,
         type: node.type,
         position: node.position,
@@ -119,7 +119,7 @@ export function sanitizeNodesForClient(
     // LOCKED: Obscure room name, strip riddle and puzzle details
     return {
       id: node.id,
-      name: `??? [SECTOR ${node.id}]`,
+      name: "Classified Sector",
       floorId: node.floorId,
       type: node.type,
       position: node.position,

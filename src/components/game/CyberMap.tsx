@@ -376,13 +376,13 @@ export function CyberMap({
                       <Lock className="w-5 h-5 text-slate-600" />
                     )}
 
-                    {/* Node ID Badge in corner */}
+                    {/* Node Mystery Badge */}
                     <span className="absolute -top-2 -right-2 px-1.5 py-0.2 rounded bg-slate-900 border border-slate-700 text-[10px] font-mono text-slate-300 font-bold">
-                      {node.id}
+                      {isCompleted ? node.id : isAvailable ? (isBoss ? "BOSS" : isFinal ? "VAULT" : "?") : "🔒"}
                     </span>
                   </div>
 
-                  {/* Room Name Label */}
+                  {/* Objective Label (Never spoils room name for uncompleted nodes) */}
                   <div className="mt-1.5 px-2 py-0.5 rounded border border-slate-800/80 bg-[#070B19]/90 backdrop-blur-sm max-w-[140px] text-center shadow-lg">
                     <p
                       className={`text-xs font-mono font-bold truncate ${
@@ -395,7 +395,15 @@ export function CyberMap({
                           : "text-slate-500"
                       }`}
                     >
-                      {isLocked ? "??? LOCKED" : node.name}
+                      {isCompleted
+                        ? `${node.name}`
+                        : isAvailable
+                        ? isBoss
+                          ? "BOSS ENCOUNTER"
+                          : isFinal
+                          ? "FINAL VAULT"
+                          : "DECODE RIDDLE"
+                        : "CLASSIFIED"}
                     </p>
                   </div>
                 </button>
