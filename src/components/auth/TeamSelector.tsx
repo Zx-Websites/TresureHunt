@@ -56,37 +56,40 @@ export function TeamSelector() {
             <button
               key={t.id}
               onClick={() => handleSelectCard(t.id)}
-              className="text-left group focus:outline-none"
+              className="text-left group focus:outline-none h-full flex flex-col"
             >
               <CyberCard
-                className={`p-4 cursor-pointer transition-all duration-200 ${
+                className={`p-5 cursor-pointer transition-all duration-200 h-full flex flex-col justify-between min-h-[190px] w-full ${
                   isSelected
                     ? "border-cyan-400 bg-cyan-950/50 shadow-[0_0_20px_rgba(0,240,255,0.3)] scale-[1.02]"
                     : "hover:border-slate-600 hover:bg-slate-900/60"
                 }`}
               >
-                <div className="flex items-center justify-between mb-3">
+                {/* Card Top: Color Indicator & Route Badge */}
+                <div className="flex items-center justify-between mb-2">
                   <span
-                    className="h-4 w-4 rounded-full shadow-md"
+                    className="h-4 w-4 rounded-full shadow-md flex-shrink-0"
                     style={{ backgroundColor: t.hex }}
                   />
-                  <span className="font-mono text-xs font-bold text-slate-400 border border-slate-700 px-2 py-0.5 rounded">
+                  <span className="font-mono text-[11px] font-bold text-slate-400 border border-slate-700/80 bg-slate-900/80 px-2 py-0.5 rounded">
                     ROUTE {t.routeId}
                   </span>
                 </div>
 
-                <div className="space-y-1">
+                {/* Card Middle: Team Name with fixed height for equal layout */}
+                <div className="my-auto py-2 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl font-mono text-slate-300 font-bold">{t.badge}</span>
-                    <h3 className="font-mono font-bold text-lg text-slate-100 group-hover:text-cyan-300 transition-colors">
+                    <span className="text-xl font-mono text-slate-300 font-bold flex-shrink-0">{t.badge}</span>
+                    <h3 className="font-mono font-bold text-base sm:text-lg text-slate-100 group-hover:text-cyan-300 transition-colors leading-snug">
                       {t.name}
                     </h3>
                   </div>
-                  <p className="text-xs font-mono text-slate-400">Team Code: {t.id}</p>
+                  <p className="text-[11px] font-mono text-slate-400 pl-7">Team Code: {t.id}</p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-cyan-400 group-hover:text-cyan-300">
-                  <span>SELECT SQUAD</span>
+                {/* Card Bottom: Action Footer */}
+                <div className="mt-auto pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-cyan-400 group-hover:text-cyan-300">
+                  <span className="font-semibold tracking-wider">SELECT SQUAD</span>
                   <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                 </div>
               </CyberCard>
