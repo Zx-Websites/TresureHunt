@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as path from "path";
+import * as crypto from "crypto";
 
 const DEFAULT_SERVICE_ACCOUNT = {
   projectId: "treasure-hunt-49dbb",
@@ -39,6 +40,7 @@ function formatPrivateKey(key?: string): string | undefined {
   if (!key) return undefined;
   let formatted = key.trim();
 
+  // Strip outer quotes if present
   if (
     (formatted.startsWith('"') && formatted.endsWith('"')) ||
     (formatted.startsWith("'") && formatted.endsWith("'"))
@@ -46,10 +48,41 @@ function formatPrivateKey(key?: string): string | undefined {
     formatted = formatted.slice(1, -1);
   }
 
-  formatted = formatted.replace(/\\n/g, "\n");
-  formatted = formatted.replace(/\r\n/g, "\n");
+  // Handle base64 encoded string if not already starting with BEGIN
+  if (!formatted.includes("BEGIN") && formatted.length > 50) {
+    try {
+      const decoded = Buffer.from(formatted, "base64").toString("utf-8");
+      if (decoded.includes("BEGIN")) {
+        formatted = decoded;
+      }
+    } catch {}
+  }
 
-  return formatted.trim();
+  // Normalize all escaped or carriage-return characters
+  formatted = formatted.replace(/\\n/g, "\n").replace(/\\r/g, "");
+
+  // Extract base64 body if standard PEM headers are present
+  const pemMatch = formatted.match(/-----BEGIN [A-Z ]+-----([\s\S]*?)-----END [A-Z ]+-----/);
+  if (pemMatch && pemMatch[1]) {
+    const base64Body = pemMatch[1].replace(/\s+/g, "");
+    const lines = base64Body.match(/.{1,64}/g) || [base64Body];
+    formatted = `-----BEGIN PRIVATE KEY-----\n${lines.join("\n")}\n-----END PRIVATE KEY-----`;
+  } else if (!formatted.startsWith("-----BEGIN")) {
+    const cleanBase64 = formatted.replace(/\s+/g, "");
+    const lines = cleanBase64.match(/.{1,64}/g) || [cleanBase64];
+    formatted = `-----BEGIN PRIVATE KEY-----\n${lines.join("\n")}\n-----END PRIVATE KEY-----`;
+  }
+
+  const finalKey = formatted.trim();
+
+  // Verify key with Node.js crypto before returning
+  try {
+    crypto.createPrivateKey(finalKey);
+    return finalKey;
+  } catch (err) {
+    console.warn("Custom private key failed OpenSSL crypto validation:", err);
+    return undefined;
+  }
 }
 
 function getAdminApp(): admin.app.App {
@@ -69,11 +102,23 @@ function getAdminApp(): admin.app.App {
   const rawKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
   const privateKey = formatPrivateKey(rawKey);
 
-  // 1. Try FIREBASE_SERVICE_ACCOUNT_KEY env
+  // 1. Try FIREBASE_SERVICE_ACCOUNT_KEY env (raw JSON or base64 encoded JSON)
   const rawServiceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   if (rawServiceAccountJson) {
     try {
-      const parsed = JSON.parse(rawServiceAccountJson);
+      let jsonStr = rawServiceAccountJson.trim();
+      if (!jsonStr.startsWith("{")) {
+        try {
+          const decoded = Buffer.from(jsonStr, "base64").toString("utf-8");
+          if (decoded.startsWith("{")) {
+            jsonStr = decoded;
+          }
+        } catch {}
+      }
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.private_key) {
+        parsed.private_key = formatPrivateKey(parsed.private_key) || parsed.private_key;
+      }
       return admin.initializeApp({
         credential: admin.credential.cert(parsed),
         projectId: parsed.project_id || projectId,
@@ -83,7 +128,7 @@ function getAdminApp(): admin.app.App {
     }
   }
 
-  // 2. Try clientEmail + privateKey env vars if valid
+  // 2. Try clientEmail + privateKey env vars if valid and passed crypto test
   if (clientEmail && privateKey) {
     try {
       return admin.initializeApp({
@@ -99,7 +144,7 @@ function getAdminApp(): admin.app.App {
     }
   }
 
-  // 3. Try local service account file if present
+  // 3. Try local service account file if present in environment
   try {
     const localServiceAccountPath = path.resolve(
       process.cwd(),
