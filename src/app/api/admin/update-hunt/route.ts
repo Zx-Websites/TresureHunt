@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { huntId = "icat-2026", action, route, node, secretCode, routeSecretKey } = body;
+    const { huntId = "icat-2026", action, route, node, secretCode, routeSecretKey, nodes, secretsMap } = body;
 
     // Fetch existing hunt
     let hunt: Hunt = ICAT_2026_HUNT_DATA;
@@ -37,6 +37,46 @@ export async function POST(req: NextRequest) {
         secrets = secretSnap.data() as HuntSecrets;
       }
     } catch {}
+
+    // 1. Studio Automated Realtime Cloud Sync
+    if (action === "AUTO_SYNC_STUDIO") {
+      if (route && route.id) {
+        hunt.routes = {
+          ...hunt.routes,
+          [route.id]: route,
+        };
+      }
+
+      if (nodes && typeof nodes === "object") {
+        hunt.nodes = {
+          ...hunt.nodes,
+          ...nodes,
+        };
+      }
+
+      hunt.updatedAt = Date.now();
+      await adminDb.collection("hunts").doc(huntId).set(hunt, { merge: true });
+
+      if (secretsMap && typeof secretsMap === "object") {
+        const updatedCodes = { ...(secrets.codes || {}) };
+        Object.entries(secretsMap).forEach(([k, codeVal]) => {
+          if (typeof codeVal === "string" && codeVal.trim()) {
+            updatedCodes[k] = {
+              code: codeVal.trim().toUpperCase(),
+            };
+          }
+        });
+        secrets.codes = updatedCodes;
+        secrets.updatedAt = Date.now();
+        await adminDb.collection("hunt_secrets").doc(huntId).set(secrets, { merge: true });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Studio changes automatically synced to cloud database.",
+        hunt,
+      });
+    }
 
     if (action === "SAVE_ROUTE" && route) {
       const targetRoute = route as HuntRoute;
@@ -89,7 +129,6 @@ export async function POST(req: NextRequest) {
             code: secretCode.trim().toUpperCase(),
             minigameScoreThreshold: targetNode.minigame?.minimumScore,
           },
-          // Also set fallback default key if not present
           ...(!secrets.codes[targetNode.id]
             ? {
                 [targetNode.id]: {

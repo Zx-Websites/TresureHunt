@@ -6,8 +6,7 @@ import { useAuth } from "@/lib/firebase/auth-context";
 import { useHuntGame } from "@/lib/game-engine/useHuntGame";
 import { LiveLeaderboard } from "@/components/admin/LiveLeaderboard";
 import { QuickSeeder } from "@/components/admin/QuickSeeder";
-import { PathBuilder } from "@/components/admin/PathBuilder";
-import { RiddleAndCodeEditor } from "@/components/admin/RiddleAndCodeEditor";
+import { RoutePathStudio } from "@/components/admin/RoutePathStudio";
 import { AdminPasswordGate } from "@/components/admin/AdminPasswordGate";
 import { CyberCard } from "@/components/ui/CyberCard";
 import { CyberButton } from "@/components/ui/CyberButton";
@@ -110,11 +109,8 @@ export default function AdminPage() {
         {/* Real-time Telemetry Leaderboard */}
         <LiveLeaderboard hunt={hunt} idToken={idToken} />
 
-        {/* Interactive Dynamic Path Flow Builder */}
-        <PathBuilder hunt={hunt} idToken={idToken} />
-
-        {/* Dedicated Room Riddle & Unlock Code Editor */}
-        <RiddleAndCodeEditor hunt={hunt} idToken={idToken} />
+        {/* Unified Path & Room Riddle Studio with Per-Path Tabs & Auto Cloud Sync */}
+        <RoutePathStudio hunt={hunt} idToken={idToken} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Quick Seeder */}
