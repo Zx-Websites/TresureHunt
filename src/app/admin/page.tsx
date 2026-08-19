@@ -158,7 +158,7 @@ export default function AdminPage() {
                   onChange={(e) => setSelectedTeam(e.target.value)}
                   className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-cyan-300 focus:outline-none focus:border-cyan-400 font-mono"
                 >
-                  {Object.values(hunt.teams).map((t) => (
+                  {Object.values(hunt?.teams || {}).map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.id}) - Current: Route {t.routeId}
                     </option>
@@ -173,7 +173,7 @@ export default function AdminPage() {
                   onChange={(e) => setNewRouteId(e.target.value)}
                   className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-cyan-300 focus:outline-none focus:border-cyan-400 font-mono"
                 >
-                  {Object.values(hunt.routes).map((r) => (
+                  {Object.values(hunt?.routes || {}).map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name} ({r.nodes.join(" → ")})
                     </option>
@@ -223,7 +223,7 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                {Object.values(hunt.nodes).map((n) => (
+                {Object.values(hunt?.nodes || {}).map((n) => (
                   <tr key={n.id} className="hover:bg-slate-900/40">
                     <td className="py-2.5 px-2 font-bold text-cyan-400">{n.id}</td>
                     <td className="py-2.5 px-2">{n.name}</td>
@@ -235,9 +235,9 @@ export default function AdminPage() {
                     </td>
                     <td className="py-2.5 px-2 font-bold text-amber-300">
                       <div className="flex flex-wrap gap-1">
-                        {Object.keys(hunt.routes).map((rId) => {
-                          const r = hunt.routes[rId];
-                          if (r.nodes?.includes(n.id)) {
+                        {Object.keys(hunt?.routes || {}).map((rId) => {
+                          const r = hunt?.routes?.[rId];
+                          if (r?.nodes?.includes(n.id)) {
                             const codeKey = `${rId}_${n.id}`;
                             const routeCode =
                               liveSecrets[codeKey]?.code ||
@@ -257,7 +257,7 @@ export default function AdminPage() {
                           }
                           return null;
                         })}
-                        {!Object.values(hunt.routes).some((r) => r.nodes?.includes(n.id)) && (
+                        {!Object.values(hunt?.routes || {}).some((r) => r?.nodes?.includes(n.id)) && (
                           <span className="text-slate-400 text-[10px]">
                             {liveSecrets[n.id]?.code || ICAT_2026_SECRETS.codes[n.id]?.code || "CODE" + n.id}
                           </span>
