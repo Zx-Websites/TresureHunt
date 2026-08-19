@@ -2,14 +2,32 @@ import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as path from "path";
 
-function formatPrivateKey(key?: string) {
+function formatPrivateKey(key?: string): string | undefined {
   if (!key) return undefined;
-  return key.replace(/\\n/g, "\n");
+  let formatted = key.trim();
+
+  // Strip leading and trailing quotes if user wrapped the value in quotes
+  if (
+    (formatted.startsWith('"') && formatted.endsWith('"')) ||
+    (formatted.startsWith("'") && formatted.endsWith("'"))
+  ) {
+    formatted = formatted.slice(1, -1);
+  }
+
+  // Replace literal escaped newlines "\n" with real newlines
+  formatted = formatted.replace(/\\n/g, "\n");
+
+  // Normalize windows newlines
+  formatted = formatted.replace(/\r\n/g, "\n");
+
+  return formatted.trim();
 }
 
-let adminApp: admin.app.App;
+function getAdminApp(): admin.app.App {
+  if (admin.apps.length > 0) {
+    return admin.app();
+  }
 
-if (!admin.apps.length) {
   const projectId =
     process.env.FIREBASE_ADMIN_PROJECT_ID ||
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
@@ -22,19 +40,12 @@ if (!admin.apps.length) {
   const rawKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
   const privateKey = formatPrivateKey(rawKey);
 
-  // Check if raw JSON was provided in FIREBASE_SERVICE_ACCOUNT_KEY env
+  // 1. Try raw JSON string from FIREBASE_SERVICE_ACCOUNT_KEY env
   const rawServiceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-
-  // Check for local service account JSON file
-  const localServiceAccountPath = path.resolve(
-    process.cwd(),
-    "treasure-hunt-49dbb-firebase-adminsdk-fbsvc-0ae90a99e9.json"
-  );
-
   if (rawServiceAccountJson) {
     try {
       const parsed = JSON.parse(rawServiceAccountJson);
-      adminApp = admin.initializeApp({
+      return admin.initializeApp({
         credential: admin.credential.cert(parsed),
         projectId: parsed.project_id || projectId,
       });
@@ -43,9 +54,10 @@ if (!admin.apps.length) {
     }
   }
 
-  if (!adminApp!) {
-    if (clientEmail && privateKey) {
-      adminApp = admin.initializeApp({
+  // 2. Try clientEmail + privateKey env vars
+  if (clientEmail && privateKey) {
+    try {
+      return admin.initializeApp({
         credential: admin.credential.cert({
           projectId,
           clientEmail,
@@ -53,28 +65,33 @@ if (!admin.apps.length) {
         }),
         projectId,
       });
-    } else if (fs.existsSync(localServiceAccountPath)) {
-      try {
-        const fileContent = JSON.parse(fs.readFileSync(localServiceAccountPath, "utf-8"));
-        adminApp = admin.initializeApp({
-          credential: admin.credential.cert(fileContent),
-          projectId: fileContent.project_id || projectId,
-        });
-      } catch (err) {
-        console.warn("Failed to load local service account file, falling back to default:", err);
-        adminApp = admin.initializeApp({ projectId });
-      }
-    } else {
-      // Initialize with project ID
-      adminApp = admin.initializeApp({
-        projectId,
-      });
+    } catch (certErr) {
+      console.warn("Failed to initialize Firebase Admin with cert env vars:", certErr);
     }
   }
-} else {
-  adminApp = admin.app();
+
+  // 3. Try local service account file (for local development)
+  try {
+    const localServiceAccountPath = path.resolve(
+      process.cwd(),
+      "treasure-hunt-49dbb-firebase-adminsdk-fbsvc-0ae90a99e9.json"
+    );
+    if (fs.existsSync(localServiceAccountPath)) {
+      const fileContent = JSON.parse(fs.readFileSync(localServiceAccountPath, "utf-8"));
+      return admin.initializeApp({
+        credential: admin.credential.cert(fileContent),
+        projectId: fileContent.project_id || projectId,
+      });
+    }
+  } catch (fsErr) {
+    console.warn("Local service account file check failed:", fsErr);
+  }
+
+  // 4. Safe fallback for Next.js build-time static evaluation
+  return admin.initializeApp({ projectId });
 }
 
+export const adminApp = getAdminApp();
 export const adminAuth = adminApp.auth();
 export const adminDb = adminApp.firestore();
 
@@ -83,5 +100,3 @@ try {
 } catch {
   // Settings already initialized or ignored
 }
-
-export { adminApp };
