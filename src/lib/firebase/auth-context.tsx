@@ -7,7 +7,7 @@ import {
   signOut,
   onIdTokenChanged,
 } from "firebase/auth";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { auth, db, googleProvider } from "./client";
 import { UserProfile } from "../game-engine/types";
 import { soundFx } from "../game-engine/sound-effects";
@@ -42,43 +42,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           // Listen to user profile document in Firestore
           const userDocRef = doc(db, "users", currentUser.uid);
-          const unsubProfile = onSnapshot(userDocRef, async (snapshot) => {
-            if (snapshot.exists()) {
-              setProfile(snapshot.data() as UserProfile);
-            } else {
-              // Create initial user profile
-              const newProfile: UserProfile = {
+          const unsubProfile = onSnapshot(
+            userDocRef,
+            async (snapshot) => {
+              const localBackupTeam =
+                typeof window !== "undefined"
+                  ? localStorage.getItem(`user_team_${currentUser.uid}`)
+                  : null;
+
+              if (snapshot.exists()) {
+                const data = snapshot.data() as UserProfile;
+                if (!data.teamId && localBackupTeam) {
+                  data.teamId = localBackupTeam;
+                  setDoc(userDocRef, { teamId: localBackupTeam }, { merge: true }).catch(() => {});
+                }
+                setProfile(data);
+              } else {
+                // Create initial user profile
+                const newProfile: UserProfile = {
+                  uid: currentUser.uid,
+                  name: currentUser.displayName || "Agent " + currentUser.uid.slice(0, 5),
+                  email: currentUser.email || "",
+                  photoURL: currentUser.photoURL || undefined,
+                  teamId: localBackupTeam || undefined,
+                  huntId: "icat-2026",
+                  role: "student",
+                  createdAt: Date.now(),
+                  updatedAt: Date.now(),
+                };
+                try {
+                  await setDoc(userDocRef, newProfile);
+                  setProfile(newProfile);
+                } catch (e) {
+                  console.warn("Could not write user profile to Firestore (using in-memory):", e);
+                  setProfile(newProfile);
+                }
+              }
+              setLoading(false);
+            },
+            (err) => {
+              console.warn("Firestore profile snapshot error:", err);
+              const localBackupTeam =
+                typeof window !== "undefined"
+                  ? localStorage.getItem(`user_team_${currentUser.uid}`)
+                  : undefined;
+
+              // Fallback profile from auth user
+              setProfile({
                 uid: currentUser.uid,
-                name: currentUser.displayName || "Agent " + currentUser.uid.slice(0, 5),
+                name: currentUser.displayName || "Cyber Agent",
                 email: currentUser.email || "",
                 photoURL: currentUser.photoURL || undefined,
+                teamId: localBackupTeam || undefined,
+                huntId: "icat-2026",
                 role: "student",
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
-              };
-              try {
-                await setDoc(userDocRef, newProfile);
-                setProfile(newProfile);
-              } catch (e) {
-                console.warn("Could not write user profile to Firestore (using in-memory):", e);
-                setProfile(newProfile);
-              }
+              });
+              setLoading(false);
             }
-            setLoading(false);
-          }, (err) => {
-            console.warn("Firestore profile snapshot error:", err);
-            // Fallback profile from auth user
-            setProfile({
-              uid: currentUser.uid,
-              name: currentUser.displayName || "Cyber Agent",
-              email: currentUser.email || "",
-              photoURL: currentUser.photoURL || undefined,
-              role: "student",
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-            });
-            setLoading(false);
-          });
+          );
 
           return () => unsubProfile();
         } catch (e) {
@@ -108,18 +131,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     soundFx.playClick();
     try {
-      setLoading(true);
-      const result = await signInWithPopup(auth, googleProvider);
-      const token = await result.user.getIdToken();
-      setIdToken(token);
+      const res = await signInWithPopup(auth, googleProvider);
       soundFx.playAccessGranted();
+      if (res.user) {
+        setUser(res.user);
+        const token = await res.user.getIdToken();
+        setIdToken(token);
+      }
     } catch (err: unknown) {
       soundFx.playAccessDenied();
       console.warn("Google Sign-in with Firebase failed (might need valid API keys):", err);
-      // If popup fails or dev mode is used, offer fallback
-      throw err;
-    } finally {
-      setLoading(false);
+      // Create fallback dev mock user if in dev/offline
+      if (process.env.NODE_ENV !== "production") {
+        await devSignIn("player@icat.ac.in", "Agent Spartan");
+      }
     }
   };
 
@@ -177,6 +202,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(updated);
 
     if (user && user.uid) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`user_team_${user.uid}`, teamId);
+      }
       try {
         const userDocRef = doc(db, "users", user.uid);
         await setDoc(userDocRef, updated, { merge: true });
@@ -202,8 +230,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           teamId,
         }),
       });
-    } catch (err) {
-      console.warn("Team state init call error:", err);
+    } catch (e) {
+      console.warn("Could not sync team-state with server API:", e);
     }
 
     soundFx.playAccessGranted();

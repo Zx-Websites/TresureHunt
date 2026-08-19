@@ -72,6 +72,7 @@ export function LiveLeaderboard({ hunt, idToken }: LiveLeaderboardProps) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-admin-passcode": "ZxAlpha98007!",
           Authorization: `Bearer ${idToken || ""}`,
         },
         body: JSON.stringify({
