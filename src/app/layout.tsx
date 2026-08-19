@@ -18,6 +18,9 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Treasure Hunt Platform | Cyber Security & Campus Navigation",
   description: "Next-generation digital interface for live physical campus treasure hunts.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export const viewport: Viewport = {
