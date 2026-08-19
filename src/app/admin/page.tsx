@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase/client";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { useHuntGame } from "@/lib/game-engine/useHuntGame";
 import { LiveLeaderboard } from "@/components/admin/LiveLeaderboard";
@@ -30,6 +32,26 @@ export default function AdminPage() {
   const [newRouteId, setNewRouteId] = useState<string>("P1");
   const [routeMsg, setRouteMsg] = useState<string | null>(null);
   const [isUpdatingRoute, setIsUpdatingRoute] = useState(false);
+  const [liveSecrets, setLiveSecrets] = useState<Record<string, { code: string }>>(() => ICAT_2026_SECRETS.codes);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, "hunt_secrets", "icat-2026"),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && data.codes) {
+            setLiveSecrets((prev) => ({
+              ...prev,
+              ...data.codes,
+            }));
+          }
+        }
+      },
+      (err) => console.warn("hunt_secrets live snapshot fallback:", err)
+    );
+    return () => unsub();
+  }, []);
 
   const handleReassignRoute = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,8 +234,35 @@ export default function AdminPage() {
                       </span>
                     </td>
                     <td className="py-2.5 px-2 font-bold text-amber-300">
-                      {ICAT_2026_SECRETS.codes[n.id]?.code || "CYBER2026"}
-                      {n.id === "401A" && " (Score >= 850)"}
+                      <div className="flex flex-wrap gap-1">
+                        {Object.keys(hunt.routes).map((rId) => {
+                          const r = hunt.routes[rId];
+                          if (r.nodes?.includes(n.id)) {
+                            const codeKey = `${rId}_${n.id}`;
+                            const routeCode =
+                              liveSecrets[codeKey]?.code ||
+                              liveSecrets[n.id]?.code ||
+                              ICAT_2026_SECRETS.codes[codeKey]?.code ||
+                              ICAT_2026_SECRETS.codes[n.id]?.code ||
+                              "CODE" + n.id;
+                            return (
+                              <span
+                                key={rId}
+                                className="px-1.5 py-0.5 rounded bg-black/80 border border-amber-500/30 text-[10px] flex items-center gap-1"
+                              >
+                                <span className="text-slate-400 font-bold">{rId}:</span>
+                                <span className="text-amber-300 font-black tracking-wider">{routeCode}</span>
+                              </span>
+                            );
+                          }
+                          return null;
+                        })}
+                        {!Object.values(hunt.routes).some((r) => r.nodes?.includes(n.id)) && (
+                          <span className="text-slate-400 text-[10px]">
+                            {liveSecrets[n.id]?.code || ICAT_2026_SECRETS.codes[n.id]?.code || "CODE" + n.id}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-2.5 px-2 text-emerald-400">
                       {n.puzzleLocation?.pieceId || "N/A"}

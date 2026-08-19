@@ -236,6 +236,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     const newSecrets = {
       ...secretsMap,
       [routeSecretKey]: cleanCode,
+      [nodeId]: cleanCode,
     };
 
     setSecretsMap(newSecrets);
