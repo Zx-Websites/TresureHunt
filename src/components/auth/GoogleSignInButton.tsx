@@ -2,15 +2,10 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/lib/firebase/auth-context";
-import { CyberButton } from "../ui/CyberButton";
-import { ShieldCheck, Terminal, UserCheck } from "lucide-react";
 
 export function GoogleSignInButton() {
-  const { signInWithGoogle, devSignIn, loading } = useAuth();
+  const { signInWithGoogle, loading } = useAuth();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [showDevModal, setShowDevModal] = useState(false);
-  const [devName, setDevName] = useState("");
-  const [devEmail, setDevEmail] = useState("");
 
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
@@ -18,16 +13,8 @@ export function GoogleSignInButton() {
       await signInWithGoogle();
     } catch (err: unknown) {
       console.warn("Google Sign In exception:", err);
-      setErrorMsg("Google Sign-In popup interrupted. You can also use Quick Agent Sign-In below for instant testing.");
+      setErrorMsg("Google Sign-In was interrupted. Please try again.");
     }
-  };
-
-  const handleDevSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!devName.trim()) return;
-    const email = devEmail.trim() || `${devName.toLowerCase().replace(/\s+/g, "")}@icat.ac.in`;
-    devSignIn(email, devName.trim());
-    setShowDevModal(false);
   };
 
   return (
@@ -70,69 +57,6 @@ export function GoogleSignInButton() {
           <p>{errorMsg}</p>
         </div>
       )}
-
-      {/* Quick Agent Testing Mode (for offline or local dev without Google OAuth client setup) */}
-      <div className="pt-2">
-        <button
-          type="button"
-          onClick={() => setShowDevModal(!showDevModal)}
-          className="text-xs font-mono text-slate-400 hover:text-cyan-400 underline underline-offset-4 transition-colors flex items-center justify-center gap-1.5 mx-auto"
-        >
-          <Terminal className="w-3.5 h-3.5" />
-          <span>Local Agent / Fast Login Options</span>
-        </button>
-
-        {showDevModal && (
-          <form
-            onSubmit={handleDevSubmit}
-            className="mt-3 rounded-lg border border-cyan-500/30 bg-[#070B19]/95 p-4 space-y-3 font-mono text-xs animate-in fade-in"
-          >
-            <div className="flex items-center gap-2 text-cyan-400 font-semibold border-b border-slate-800 pb-2">
-              <UserCheck className="w-4 h-4" />
-              <span>AGENT IDENTITY SIMULATOR</span>
-            </div>
-            <div>
-              <label className="block text-slate-400 mb-1">Agent Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Maya Lin"
-                value={devName}
-                onChange={(e) => setDevName(e.target.value)}
-                className="w-full rounded border border-slate-700 bg-slate-900/90 px-3 py-1.5 text-cyan-200 focus:border-cyan-400 focus:outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-slate-400 mb-1">Email</label>
-              <input
-                type="email"
-                placeholder="e.g. maya@icat.ac.in"
-                value={devEmail}
-                onChange={(e) => setDevEmail(e.target.value)}
-                className="w-full rounded border border-slate-700 bg-slate-900/90 px-3 py-1.5 text-cyan-200 focus:border-cyan-400 focus:outline-none"
-              />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <CyberButton type="submit" variant="cyan" size="sm" className="flex-1">
-                ACCESS SYSTEM
-              </CyberButton>
-              <CyberButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDevModal(false)}
-              >
-                CANCEL
-              </CyberButton>
-            </div>
-          </form>
-        )}
-      </div>
-
-      <div className="flex items-center justify-center gap-2 text-[11px] font-mono text-slate-400">
-        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-        <span>FIREBASE AUTHENTICATION PROTOCOL ACTIVE</span>
-      </div>
     </div>
   );
 }
