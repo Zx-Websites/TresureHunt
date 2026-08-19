@@ -45,7 +45,6 @@ export function CodeInputTerminal({
           <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
           <span>ENTER CLEARANCE CIPHER</span>
         </label>
-        <span className="text-[10px] text-slate-400">SECTOR {nodeId}</span>
       </div>
 
       <div className="flex gap-2">
