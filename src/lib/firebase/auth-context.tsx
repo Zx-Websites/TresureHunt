@@ -161,6 +161,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     soundFx.playClick();
     if (!profile) return;
 
+    // Permanent Squad Lock: Once a student selects a team, they cannot re-select unless the game resets
+    if (profile.teamId && profile.teamId !== "") {
+      console.warn("Squad is permanently locked for this user profile.");
+      return;
+    }
+
     const updated: UserProfile = {
       ...profile,
       teamId,

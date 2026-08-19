@@ -44,6 +44,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 4. When entire game is reset, unlock user profile team selections
+    if (resetTeams) {
+      try {
+        const usersSnap = await adminDb.collection("users").get();
+        const batch = adminDb.batch();
+        usersSnap.docs.forEach((docSnap) => {
+          batch.set(docSnap.ref, { teamId: null, updatedAt: Date.now() }, { merge: true });
+        });
+        await batch.commit();
+      } catch (userResetErr) {
+        console.warn("Could not reset user profiles:", userResetErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: `Hunt '${huntId}' and server secrets successfully seeded into Firestore.`,
