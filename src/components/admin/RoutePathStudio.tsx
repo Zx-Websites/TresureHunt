@@ -1,6 +1,6 @@
-"use client";
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase/client";
 import { Hunt, HuntNode, HuntRoute, NodeType, CodeSource } from "@/lib/game-engine/types";
 import { ICAT_2026_HUNT_DATA, ICAT_2026_SECRETS } from "@/lib/game-engine/icat-2026-seed-data";
 import { CyberCard } from "@/components/ui/CyberCard";
@@ -23,6 +23,7 @@ import {
   Puzzle,
   AlertCircle,
   Zap,
+  Save,
 } from "lucide-react";
 
 interface RoutePathStudioProps {
@@ -73,9 +74,35 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     }));
   }, [hunt.nodes]);
 
+  // Subscribe to live Firestore secrets in real time
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, "hunt_secrets", hunt.id || "icat-2026"),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && data.codes) {
+            const map: Record<string, string> = {};
+            Object.entries(data.codes).forEach(([k, v]: [string, any]) => {
+              map[k] = v?.code || "";
+            });
+            setSecretsMap((prev) => ({
+              ...prev,
+              ...map,
+            }));
+          }
+        }
+      },
+      (err) => console.warn("hunt_secrets live snapshot in studio:", err)
+    );
+    return () => unsub();
+  }, [hunt.id]);
+
   // Sync status
   const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "synced" | "error">("synced");
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [savingRoomId, setSavingRoomId] = useState<string | null>(null);
+  const [savedRoomId, setSavedRoomId] = useState<string | null>(null);
 
   // Quick Room Adder Modal / dropdown state
   const [selectedAddNodeId, setSelectedAddNodeId] = useState<string>("");
@@ -133,6 +160,22 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     },
     [hunt.id, idToken, onRefresh]
   );
+
+  // Explicit Direct Save Room Button Handler
+  const handleSaveRoomDirect = async (nodeId: string) => {
+    soundFx.playClick();
+    setSavingRoomId(nodeId);
+    setSavedRoomId(null);
+
+    await autoSaveToCloud(currentRoute, localNodes, secretsMap);
+
+    soundFx.playAccessGranted();
+    setSavingRoomId(null);
+    setSavedRoomId(nodeId);
+    setTimeout(() => {
+      setSavedRoomId((prev) => (prev === nodeId ? null : prev));
+    }, 3500);
+  };
 
   // Trigger debounced cloud sync whenever edits occur
   const triggerAutoSave = (
@@ -820,11 +863,32 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[11px] text-slate-500">
-                      <span className="flex items-center gap-1 text-emerald-400">
-                        <Zap className="w-3 h-3 animate-pulse" />
-                        Changes save automatically to Cloud Database.
-                      </span>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-slate-800 text-[11px]">
+                      <div className="flex items-center gap-2">
+                        {savedRoomId === nodeId ? (
+                          <span className="flex items-center gap-1.5 text-emerald-400 font-bold animate-in fade-in">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span>SAVED TO CLOUD & FIRESTORE DIRECTORY!</span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-slate-400">
+                            <Zap className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                            <span>Auto-saves as you type, or click save to commit immediately.</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <CyberButton
+                        type="button"
+                        onClick={() => handleSaveRoomDirect(nodeId)}
+                        loading={savingRoomId === nodeId}
+                        variant="cyan"
+                        size="sm"
+                        className="font-bold text-xs shadow-[0_0_15px_rgba(0,240,255,0.2)]"
+                      >
+                        <Save className="w-3.5 h-3.5 mr-1.5" />
+                        <span>SAVE ROOM DETAILS</span>
+                      </CyberButton>
                     </div>
                   </div>
                 )}
