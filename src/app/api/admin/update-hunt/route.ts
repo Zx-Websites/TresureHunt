@@ -4,6 +4,80 @@ import { verifyAuthToken } from "@/lib/firebase/server-auth";
 import { ICAT_2026_HUNT_DATA, ICAT_2026_SECRETS } from "@/lib/game-engine/icat-2026-seed-data";
 import { Hunt, HuntNode, HuntRoute, HuntSecrets } from "@/lib/game-engine/types";
 
+export async function GET(req: NextRequest) {
+  try {
+    const user = await verifyAuthToken(req);
+    const adminPasscode = req.headers.get("x-admin-passcode");
+    const isAuthorized =
+      (user && (user.role === "admin" || user.role === "teacher")) ||
+      adminPasscode === "ZxAlpha98007!" ||
+      process.env.NODE_ENV !== "production";
+
+    if (!isAuthorized) {
+      return NextResponse.json({ success: false, error: "UNAUTHORIZED: Admin clearance required." }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const huntId = searchParams.get("huntId") || "icat-2026";
+
+    // Fetch existing hunt
+    let hunt: Hunt = ICAT_2026_HUNT_DATA;
+    try {
+      const huntSnap = await adminDb.collection("hunts").doc(huntId).get();
+      if (huntSnap.exists) {
+        const snapData = huntSnap.data() as Hunt;
+        hunt = {
+          ...ICAT_2026_HUNT_DATA,
+          ...snapData,
+          nodes: {
+            ...ICAT_2026_HUNT_DATA.nodes,
+            ...(snapData.nodes || {}),
+          },
+          routes: {
+            ...ICAT_2026_HUNT_DATA.routes,
+            ...(snapData.routes || {}),
+          },
+        };
+      }
+    } catch (e) {
+      console.warn("Error fetching hunt in admin GET:", e);
+    }
+
+    // Fetch existing secrets
+    let secrets: HuntSecrets = ICAT_2026_SECRETS;
+    try {
+      const secretSnap = await adminDb.collection("hunt_secrets").doc(huntId).get();
+      if (secretSnap.exists) {
+        const snapSecrets = secretSnap.data() as HuntSecrets;
+        secrets = {
+          ...ICAT_2026_SECRETS,
+          codes: {
+            ...ICAT_2026_SECRETS.codes,
+            ...(snapSecrets.codes || {}),
+          },
+        };
+      }
+    } catch (e) {
+      console.warn("Error fetching secrets in admin GET:", e);
+    }
+
+    const secretsMap: Record<string, string> = {};
+    Object.entries(secrets.codes || {}).forEach(([k, v]) => {
+      secretsMap[k] = v?.code || "";
+    });
+
+    return NextResponse.json({
+      success: true,
+      hunt,
+      secrets: secrets.codes,
+      secretsMap,
+    });
+  } catch (error: unknown) {
+    console.error("Fetch hunt admin data error:", error);
+    return NextResponse.json({ success: false, error: "Internal server error." }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user = await verifyAuthToken(req);
@@ -25,7 +99,18 @@ export async function POST(req: NextRequest) {
     try {
       const huntSnap = await adminDb.collection("hunts").doc(huntId).get();
       if (huntSnap.exists) {
-        hunt = huntSnap.data() as Hunt;
+        hunt = {
+          ...ICAT_2026_HUNT_DATA,
+          ...(huntSnap.data() as Hunt),
+          nodes: {
+            ...ICAT_2026_HUNT_DATA.nodes,
+            ...((huntSnap.data() as Hunt).nodes || {}),
+          },
+          routes: {
+            ...ICAT_2026_HUNT_DATA.routes,
+            ...((huntSnap.data() as Hunt).routes || {}),
+          },
+        };
       }
     } catch {}
 
@@ -34,7 +119,13 @@ export async function POST(req: NextRequest) {
     try {
       const secretSnap = await adminDb.collection("hunt_secrets").doc(huntId).get();
       if (secretSnap.exists) {
-        secrets = secretSnap.data() as HuntSecrets;
+        secrets = {
+          ...ICAT_2026_SECRETS,
+          codes: {
+            ...ICAT_2026_SECRETS.codes,
+            ...((secretSnap.data() as HuntSecrets).codes || {}),
+          },
+        };
       }
     } catch {}
 
@@ -71,10 +162,17 @@ export async function POST(req: NextRequest) {
         await adminDb.collection("hunt_secrets").doc(huntId).set(secrets, { merge: true });
       }
 
+      const cleanSecretsMap: Record<string, string> = {};
+      Object.entries(secrets.codes || {}).forEach(([k, v]) => {
+        cleanSecretsMap[k] = v?.code || "";
+      });
+
       return NextResponse.json({
         success: true,
         message: "Studio changes automatically synced to cloud database.",
         hunt,
+        secrets: secrets.codes,
+        secretsMap: cleanSecretsMap,
       });
     }
 
@@ -90,10 +188,18 @@ export async function POST(req: NextRequest) {
 
       await adminDb.collection("hunts").doc(huntId).set(hunt, { merge: true });
 
+      const cleanSecretsMap: Record<string, string> = {};
+      Object.entries(secrets.codes || {}).forEach(([k, v]) => {
+        cleanSecretsMap[k] = v?.code || "";
+      });
+
       return NextResponse.json({
         success: true,
         message: `Route ${targetRoute.id} (${targetRoute.name}) saved successfully with ${targetRoute.nodes.length} nodes.`,
+        hunt,
         routes: hunt.routes,
+        secrets: secrets.codes,
+        secretsMap: cleanSecretsMap,
       });
     }
 
@@ -142,10 +248,18 @@ export async function POST(req: NextRequest) {
         await adminDb.collection("hunt_secrets").doc(huntId).set(secrets, { merge: true });
       }
 
+      const cleanSecretsMap: Record<string, string> = {};
+      Object.entries(secrets.codes || {}).forEach(([k, v]) => {
+        cleanSecretsMap[k] = v?.code || "";
+      });
+
       return NextResponse.json({
         success: true,
         message: `Node ${targetNode.id} (${targetNode.name}) saved successfully.`,
+        hunt,
         nodes: hunt.nodes,
+        secrets: secrets.codes,
+        secretsMap: cleanSecretsMap,
       });
     }
 

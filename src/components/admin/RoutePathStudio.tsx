@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
-import { Hunt, HuntNode, HuntRoute, NodeType, CodeSource } from "@/lib/game-engine/types";
+import { Hunt, HuntNode, HuntRoute, NodeType } from "@/lib/game-engine/types";
 import { ICAT_2026_HUNT_DATA, ICAT_2026_SECRETS } from "@/lib/game-engine/icat-2026-seed-data";
 import { CyberCard } from "@/components/ui/CyberCard";
 import { CyberButton } from "@/components/ui/CyberButton";
@@ -30,9 +28,15 @@ interface RoutePathStudioProps {
   hunt: Hunt;
   idToken: string | null;
   onRefresh?: () => void;
+  onHuntUpdate?: (update: {
+    nodes?: Record<string, HuntNode>;
+    routes?: Record<string, HuntRoute>;
+    secretsMap?: Record<string, string>;
+    liveSecrets?: Record<string, { code: string }>;
+  }) => void;
 }
 
-export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioProps) {
+export function RoutePathStudio({ hunt, idToken, onRefresh, onHuntUpdate }: RoutePathStudioProps) {
   // Merge live hunt routes with seed routes
   const effectiveRoutes: Record<string, HuntRoute> = {
     ...ICAT_2026_HUNT_DATA.routes,
@@ -68,35 +72,58 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
 
   // Sync state with incoming props
   useEffect(() => {
-    setLocalNodes((prev) => ({
-      ...prev,
-      ...hunt.nodes,
-    }));
+    if (hunt.nodes && Object.keys(hunt.nodes).length > 0) {
+      setLocalNodes((prev) => ({
+        ...prev,
+        ...hunt.nodes,
+      }));
+    }
   }, [hunt.nodes]);
 
-  // Subscribe to live Firestore secrets in real time
+  // Fetch authoritative cloud secrets and hunt data on mount
   useEffect(() => {
-    const unsub = onSnapshot(
-      doc(db, "hunt_secrets", hunt.id || "icat-2026"),
-      (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          if (data && data.codes) {
-            const map: Record<string, string> = {};
-            Object.entries(data.codes).forEach(([k, v]: [string, any]) => {
-              map[k] = v?.code || "";
-            });
+    let isMounted = true;
+    const fetchCloudHuntData = async () => {
+      try {
+        const res = await fetch(`/api/admin/update-hunt?huntId=${hunt.id || "icat-2026"}`, {
+          headers: {
+            "x-admin-passcode": "ZxAlpha98007!",
+            Authorization: `Bearer ${idToken || ""}`,
+          },
+        });
+        const data = await res.json();
+        if (isMounted && data.success) {
+          if (data.secretsMap) {
             setSecretsMap((prev) => ({
               ...prev,
-              ...map,
+              ...data.secretsMap,
             }));
           }
+          if (data.hunt?.nodes) {
+            setLocalNodes((prev) => ({
+              ...prev,
+              ...data.hunt.nodes,
+            }));
+          }
+          if (onHuntUpdate) {
+            onHuntUpdate({
+              nodes: data.hunt?.nodes,
+              routes: data.hunt?.routes,
+              secretsMap: data.secretsMap,
+              liveSecrets: data.secrets,
+            });
+          }
         }
-      },
-      (err) => console.warn("hunt_secrets live snapshot in studio:", err)
-    );
-    return () => unsub();
-  }, [hunt.id]);
+      } catch (err) {
+        console.warn("Failed to fetch cloud secrets in studio:", err);
+      }
+    };
+
+    fetchCloudHuntData();
+    return () => {
+      isMounted = false;
+    };
+  }, [hunt.id, idToken]);
 
   // Sync status
   const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "synced" | "error">("synced");
@@ -117,6 +144,33 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
 
   // Debounced Auto-Save Ref
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper to sync local edits immediately to parent admin view
+  const syncChangeToParent = useCallback(
+    (
+      updatedRoute: HuntRoute,
+      updatedNodes: Record<string, HuntNode>,
+      updatedSecrets: Record<string, string>
+    ) => {
+      const formattedSecrets: Record<string, { code: string }> = {};
+      Object.entries(updatedSecrets).forEach(([k, v]) => {
+        formattedSecrets[k] = { code: v };
+      });
+
+      if (onHuntUpdate) {
+        onHuntUpdate({
+          nodes: updatedNodes,
+          routes: {
+            ...effectiveRoutes,
+            [updatedRoute.id]: updatedRoute,
+          },
+          secretsMap: updatedSecrets,
+          liveSecrets: formattedSecrets,
+        });
+      }
+    },
+    [effectiveRoutes, onHuntUpdate]
+  );
 
   // Automated Realtime Cloud Sync function
   const autoSaveToCloud = useCallback(
@@ -148,6 +202,20 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
         const data = await res.json();
         if (res.ok && data.success) {
           setSyncStatus("synced");
+          if (data.secretsMap) {
+            setSecretsMap((prev) => ({ ...prev, ...data.secretsMap }));
+          }
+          if (data.hunt?.nodes) {
+            setLocalNodes((prev) => ({ ...prev, ...data.hunt.nodes }));
+          }
+          if (onHuntUpdate) {
+            onHuntUpdate({
+              nodes: data.hunt?.nodes || nodesToSave,
+              routes: data.hunt?.routes || { ...effectiveRoutes, [routeToSave.id]: routeToSave },
+              secretsMap: data.secretsMap || secretsToSave,
+              liveSecrets: data.secrets,
+            });
+          }
           if (onRefresh) onRefresh();
         } else {
           setSyncStatus("error");
@@ -158,7 +226,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
         setSyncError("Network sync failure.");
       }
     },
-    [hunt.id, idToken, onRefresh]
+    [hunt.id, idToken, onRefresh, onHuntUpdate, effectiveRoutes]
   );
 
   // Explicit Direct Save Room Button Handler
@@ -244,6 +312,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
 
     const newNodes = { ...localNodes, [nodeId]: updatedNode };
     setLocalNodes(newNodes);
+    syncChangeToParent(currentRoute, newNodes, secretsMap);
     triggerAutoSave(currentRoute, newNodes, secretsMap);
   };
 
@@ -268,6 +337,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
 
     const newNodes = { ...localNodes, [nodeId]: updatedNode };
     setLocalNodes(newNodes);
+    syncChangeToParent(currentRoute, newNodes, secretsMap);
     triggerAutoSave(currentRoute, newNodes, secretsMap);
   };
 
@@ -283,6 +353,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     };
 
     setSecretsMap(newSecrets);
+    syncChangeToParent(currentRoute, localNodes, newSecrets);
     triggerAutoSave(currentRoute, localNodes, newSecrets);
   };
 
@@ -307,6 +378,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
 
     const newNodes = { ...localNodes, [nodeId]: updatedNode };
     setLocalNodes(newNodes);
+    syncChangeToParent(currentRoute, newNodes, secretsMap);
     triggerAutoSave(currentRoute, newNodes, secretsMap);
   };
 
@@ -322,6 +394,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
 
     const newNodes = { ...localNodes, [nodeId]: updatedNode };
     setLocalNodes(newNodes);
+    syncChangeToParent(currentRoute, newNodes, secretsMap);
     triggerAutoSave(currentRoute, newNodes, secretsMap);
   };
 
@@ -343,6 +416,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     };
 
     effectiveRoutes[activeRouteId] = updatedRoute;
+    syncChangeToParent(updatedRoute, localNodes, secretsMap);
     triggerAutoSave(updatedRoute, localNodes, secretsMap);
     setSelectedAddNodeId("");
     setExpandedRoomId(selectedAddNodeId);
@@ -360,6 +434,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     };
 
     effectiveRoutes[activeRouteId] = updatedRoute;
+    syncChangeToParent(updatedRoute, localNodes, secretsMap);
     triggerAutoSave(updatedRoute, localNodes, secretsMap);
   };
 
@@ -378,6 +453,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     };
 
     effectiveRoutes[activeRouteId] = updatedRoute;
+    syncChangeToParent(updatedRoute, localNodes, secretsMap);
     triggerAutoSave(updatedRoute, localNodes, secretsMap);
   };
 
@@ -396,6 +472,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     };
 
     effectiveRoutes[activeRouteId] = updatedRoute;
+    syncChangeToParent(updatedRoute, localNodes, secretsMap);
     triggerAutoSave(updatedRoute, localNodes, secretsMap);
   };
 
@@ -441,6 +518,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     setNewRoomName("");
     setExpandedRoomId(cleanId);
 
+    syncChangeToParent(updatedRoute, newNodes, secretsMap);
     triggerAutoSave(updatedRoute, newNodes, secretsMap);
   };
 
@@ -469,6 +547,7 @@ export function RoutePathStudio({ hunt, idToken, onRefresh }: RoutePathStudioPro
     setNewCustomRouteId("");
     setNewCustomRouteName("");
 
+    syncChangeToParent(newRoute, localNodes, secretsMap);
     triggerAutoSave(newRoute, localNodes, secretsMap);
   };
 
